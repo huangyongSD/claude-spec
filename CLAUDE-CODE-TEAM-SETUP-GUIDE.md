@@ -8,7 +8,7 @@
 > **声明**：本文档整合自多个实践来源，已修订为自包含的操作手册。附录内容参考了 Andrej Karpathy 的编码准则和 AWS Kiro 培训材料，均已适配为可直接使用的配置模板。
 ```text
   1. 打开 Claude Code，说：「扫描当前项目，提炼技术栈/数据库/中间件/包管理器/构建命令/测试命令/格式化命令/核心目录/覆盖率」
-  2. 把这份手册发给 Claude Code，说：「按手册中的模板创建所有配置文件，用刚才的扫描结果替换 {{...}} 占位符」
+  2. 把这份手册发给 Claude Code，说：「按手册"CLAUDE-CODE-TEAM-SETUP-GUIDE.md"中的模板创建所有配置文件，用刚才的扫描结果替换 {{...}} 占位符」
   3. 按手册第四章执行 Git 提交
   4. 按手册第五章执行质量门禁，确保交付前 10 项检查全绿
 ```  
@@ -1249,7 +1249,32 @@ docker exec <container> mysql -uroot -p123456 -e "SHOW VARIABLES LIKE 'character
 # character_set_results    = utf8mb4
 # character_set_database   = utf8mb4
 ```
-```
+
+## 数据库方言规范
+
+**重要**：生成 SQL 脚本时必须与项目数据库类型一致，避免语法差异导致执行失败。
+
+| 数据库类型 | 语法特点 |
+|-----------|---------|
+| MySQL | 使用 `AUTO_INCREMENT`、反引号、LIMIT OFFSET |
+| PostgreSQL/瀚高 | 使用 `SERIAL`/`GENERATED ALWAYS AS IDENTITY`、双引号、LIMIT OFFSET |
+| 瀚高 | 兼容 PostgreSQL 协议，字符串拼接用 `\|\|` |
+
+### 常见语法差异
+
+| 场景 | MySQL | PostgreSQL/瀚高 |
+|------|-------|----------------|
+| 自增主键 | `id INT AUTO_INCREMENT` | `id SERIAL` 或 `id GENERATED ALWAYS AS IDENTITY` |
+| 字符串拼接 | `CONCAT(a, b)` | `a \|\| b` |
+| 分页 | `LIMIT 10 OFFSET 20` | `LIMIT 10 OFFSET 20`（相同） |
+| 日期函数 | `NOW()`、`DATE_FORMAT()` | `NOW()`、`TO_CHAR()` |
+| 标识符引号 | 反引号 `` ` `` | 双引号 `"` 或不加 |
+
+### 使用约束
+
+- **禁止**使用数据库特有函数（除非明确标注）
+- **必须**在 SQL 头部注释标注目标数据库类型：`-- DB_TYPE: MySQL 8.0`
+- 多数据库项目使用 `databaseId` 区分 SQL（MyBatis）或分开目录管理
 
 #### 6.7.3 steer/foundation/structure.md
 
@@ -1274,7 +1299,7 @@ docker exec <container> mysql -uroot -p123456 -e "SHOW VARIABLES LIKE 'character
 |------|-------------|---------|
 | 新增 API endpoint | {{ROUTE_FILE}} + {{HANDLER_DIR}} | 需同步更新测试 |
 | 修改业务逻辑 | {{BIZ_LOGIC_FILE}} | 避免直接操作数据库 |
-| 新增数据库表 | {{MIGRATION_DIR}} + {{ENTITY_DIR}} | 需运行迁移脚本 |
+| 新增数据库表 | sql/ 目录（后端项目根目录下） | 所有 SQL 脚本必须保存在后端项目根目录的 sql/ 目录，如不存在则创建；禁止保存在工作空间根目录 |
 | 修改配置 | {{CONFIG_DIR}} | 注意环境差异 |
 | 新增前端页面 | {{PAGE_DIR}} + {{ROUTE_CONFIG}} | 需同步更新菜单 |
 
@@ -3912,9 +3937,8 @@ API 500
 **PowerShell 版（`.claude/hooks/post-edit-check.ps1`）**：
 
 ```powershell
-# PostToolUse Hook: 代码文件格式化提醒 + 配置文件占位符检测
-# 用法: stdin 接收 JSON，输出提醒到 Host，退出码 0 放行
-# 占位符检测模式: 只匹配全大写 {{PLACEHOLDER}} 格式，避免误报 Mustache/Handlebars
+# PostToolUse Hook: Code file formatting reminder + config placeholder detection
+# Usage: stdin receives JSON, output reminder to Host, exit code 0 allows
 
 $stdin = [Console]::In.ReadToEnd()
 if (-not $stdin) { echo 0; exit }
@@ -3925,17 +3949,17 @@ catch { echo 0; exit }
 $f = $j.tool_input.file_path
 if (-not $f) { echo 0; exit }
 
-# 代码文件格式化提醒
-$FILE_EXTENSIONS = "{{FILE_EXTENSIONS}}"
+# Code file formatting reminder
+$FILE_EXTENSIONS = "(java|xml|vue|js|sql)$"
 if ($f -match $FILE_EXTENSIONS) {
-  Write-Host ("✅ " + $j.tool_name + " 代码文件：" + $f + " — 请运行 {{FORMAT_CMD}} 检查格式规范。")
+  Write-Host ("[Hook] " + $j.tool_name + " file: " + $f + " - Format: backend 'mvn spotless:apply', frontend 'yarn lint'")
 }
 
-# 配置文件占位符检测（只匹配全大写 {{PLACEHOLDER}} 格式）
+# Config file placeholder detection (only uppercase {{PLACEHOLDER}} format)
 if ($f -match '^\.claude/' -and (Test-Path $f)) {
   $content = Get-Content $f -Raw
   if ($content -match '\{\{[A-Z][A-Z_]+\}\}') {
-    Write-Host ("⚠️ 配置文件 " + $f + " 包含未替换的占位符（如 {{PROJECT_NAME}}），请替换为实际值。")
+    Write-Host ("[Hook] Config file " + $f + " contains unreplaced placeholders (e.g. {{PROJECT_NAME}}), please replace with actual values.")
   }
 }
 
@@ -3945,8 +3969,8 @@ echo 0
 **PowerShell 版（`.claude/hooks/pre-bash-check.ps1`）**：
 
 ```powershell
-# PreToolUse Hook: 依赖安装提醒
-# 用法: stdin 接收 JSON，输出提醒到 Host，退出码 0 放行
+# PreToolUse Hook: Long-running command detection
+# Usage: stdin receives JSON, output reminder to Host, exit code 0 allows
 
 $stdin = [Console]::In.ReadToEnd()
 if (-not $stdin) { echo 0; exit }
@@ -3954,18 +3978,19 @@ if (-not $stdin) { echo 0; exit }
 try { $j = $stdin | ConvertFrom-Json }
 catch { echo 0; exit }
 
-$PACKAGE_MANAGER = "{{PACKAGE_MANAGER}}"
-if ($j.command -and $j.command -match "^($PACKAGE_MANAGER)\s+(install|i|package)") {
-  Write-Host "⚠️ 依赖安装/构建提醒：长耗时命令，建议在后台运行，避免会话中断。"
+$PACKAGE_MANAGER = "mvn|yarn"
+if ($j.command -and $j.command -match "^($PACKAGE_MANAGER)\s+(install|i|package|clean|compile|test)") {
+  Write-Host "[Hook] Long-running command detected. Consider running in background."
 }
 
 echo 0
 ```
 
-> **脚本使用说明**：
-> - 脚本中的 `{{PACKAGE_MANAGER}}`、`{{FILE_EXTENSIONS}}`、`{{FORMAT_CMD}}` 需替换为实际值
-> - 首次使用时建议手动验证 Hook 是否生效（编辑一个 .claude/ 下的文件，观察是否有占位符提醒输出）
-> - 新增脚本文件后，文件清单总数增加 2 个（`.claude/hooks/` 下 2 个脚本文件）
+> **Script usage notes**:
+> - post-edit-check.ps1: Detects code files (java|xml|vue|js|sql) and config placeholders `{{[A-Z][A-Z_]+}}`
+> - pre-bash-check.ps1: Detects long-running commands (mvn/yarn install/package/clean/compile/test)
+> - Always output plain ASCII text - no emoji, no Chinese characters
+> -首次使用时建议手动验证 Hook 是否生效（编辑一个 .claude/ 下的文件，观察是否有占位符提醒输出）
 
 #### 6.23.2 settings.json 配置
 
