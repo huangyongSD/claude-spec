@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash({{PACKAGE_MANAGER}} **)",
+      "Bash(git **)",
+      "Bash(node **)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Edit(**/.env)",
+      "Write(**/.env)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/pre-bash-check.ps1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "(Edit|Write)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-edit-check.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}
