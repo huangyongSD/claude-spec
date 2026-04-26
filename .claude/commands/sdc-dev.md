@@ -54,8 +54,10 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 | 1a | DB 评审修复 | sda-db-implementer | 重新评审（最多 3 轮） | 审查报告 | — |
 | 2 | 后端实现 | sda-backend | sda-code-reviewer 评审后端产出 | design.md（API + 文件产出清单）、DB 产出文件 | 阶段二：后端 |
 | 2a | 后端评审修复 | sda-backend | 重新评审（最多 3 轮） | 审查报告 | — |
+| **2b** | **后端编译验证** | **sda-backend** | **运行 `mvn clean compile`，失败则调用 sda-build-error-resolver 修复** | **后端代码** | **—** |
 | 3 | 前端实现 | sda-frontend | sda-code-reviewer 评审前端产出 | design.md（API + 文件产出清单）、后端 API 端点、原型 HTML | 阶段三：前端 |
 | 3a | 前端评审修复 | sda-frontend | 重新评审（最多 3 轮） | 审查报告 | — |
+| **3b** | **前端编译验证** | **sda-frontend** | **运行 `yarn build`，失败则调用 sda-build-error-resolver 修复** | **前端代码** | **—** |
 | 4 | 测试执行 | sda-tester | sda-code-reviewer 评审测试代码 | test-cases.md、前端页面 | 阶段四：测试执行 |
 | 4a | 测试评审修复 | sda-tester | 重新评审（最多 3 轮） | 审查报告 | — |
 | 5 | 全量代码审查 | sda-code-reviewer | — | 所有代码文件 | 阶段五：审查 |
@@ -110,7 +112,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 `/sdc-dev` 命令执行时，主 CC 按以下流程自动调度 SDA，每个阶段完成后自动进入下一阶段，无需人工干预：
 
 ```
-读取 Spec → 检查 E2E 框架 → 调度 sda-db-implementer → 评审 → [sda-db-implementer 修复→重审]×3 → 调度 sda-backend → 评审 → [sda-backend 修复→重审]×3 → 调度 sda-frontend → 评审 → [sda-frontend 修复→重审]×3 → 调度 sda-tester → 评审 → [sda-tester 修复→重审]×3 → 全量审查 → 按归属调度 SDA 修复 → [重审]×3 → 质量门禁
+读取 Spec → 检查 E2E 框架 → 调度 sda-db-implementer → 评审 → [sda-db-implementer 修复→重审]×3 → 调度 sda-backend → 评审 → [sda-backend 修复→重审]×3 → **后端编译验证（mvn compile，失败调用 sda-build-error-resolver）** → 调度 sda-frontend → 评审 → [sda-frontend 修复→重审]×3 → **前端编译验证（yarn build，失败调用 sda-build-error-resolver）** → 调度 sda-tester → 评审 → [sda-tester 修复→重审]×3 → 全量审查 → 按归属调度 SDA 修复 → [重审]×3 → 质量门禁
 ```
 
 每个 SDA 阶段完成后，立即调用 sda-code-reviewer 对该阶段产出进行评审。评审不通过则修复后重新评审（最多 3 轮），3 轮后仍有问题暂停等待人工决策。通过后才进入下一阶段。
@@ -185,7 +187,11 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 审查范围：VO 类、Service 接口和实现、Controller
 - 审查维度：API 完整性（对照 design.md）、参数校验、权限注解、null 返回路径、错误处理
 - 如有问题：重新调度 sda-backend 修复（附加审查报告） → 重新评审（最多 3 轮）
-- 通过后继续
+
+**后端编译验证**（评审通过后执行）：
+- 运行 `mvn clean compile` 验证 Java 代码可编译
+- 如编译失败：调用 sda-build-error-resolver 诊断并修复错误
+- 修复后重新编译验证，通过后才进入下一阶段
 
 #### 阶段 3：sda-frontend 调度
 
@@ -221,7 +227,11 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 审查范围：API 定义文件、列表页面、表单弹窗
 - 审查维度：空值守卫（?? []）、权限指令与后端同步、placeholder 残留、UI 交互完整性
 - 如有问题：重新调度 sda-frontend 修复（附加审查报告） → 重新评审（最多 3 轮）
-- 通过后继续
+
+**前端编译验证**（评审通过后执行）：
+- 运行 `yarn build` 验证前端代码可编译
+- 如编译失败：调用 sda-build-error-resolver 诊断并修复错误
+- 修复后重新编译验证，通过后才进入下一阶段
 
 #### 阶段 4：sda-tester 调度
 

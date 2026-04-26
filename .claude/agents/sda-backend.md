@@ -134,6 +134,14 @@ public List<XxxRespVO> getList() {
 | ServiceImpl | service/XxxServiceImpl.java | 实现 |
 | Controller | controller/admin/xxx/XxxController.java | 控制器 |
 
+## 完成后验证
+
+完成所有代码实现后，必须执行以下验证步骤：
+
+1. **编译检查**：运行 `mvn clean compile` 验证 Java 代码可编译
+2. **如编译失败**：调用 sda-build-error-resolver 诊断并修复错误，修复后重新编译验证
+3. **验证通过后**：再继续下一个阶段
+
 ## 写文件规则
 
 - **每次写入 ≤ 200 行**，大文件分模块写入
