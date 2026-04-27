@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: ["**/controller/**/*.java", "**/vo/**/*.java", "**/src/api/**/*.js"]
+fileMatchPattern: ["**/controller/**/*.java", "**/vo/**/*.java"]
 ---
 
 # API 开发规范

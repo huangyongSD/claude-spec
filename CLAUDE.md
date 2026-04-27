@@ -4,17 +4,17 @@
 
 ## 项目信息
 
-- **项目名称**：`{{PROJECT_NAME}}`
-- **技术栈**：`{{TECH_STACK}}`
-- **数据库**：`{{DB_TYPE}}`
-- **中间件**：`{{MIDDLEWARE}}`（如无则标注"无"）
+- **项目名称**：`yudao（芋道）`
+- **技术栈**：`SpringBoot 2.7 + MyBatis-Plus + JDK8 / Vue2 + Element-UI`
+- **数据库**：`MySQL`
+- **中间件**：`Redis + Redisson（缓存/分布式锁）`
 
 > 构建命令、测试命令、格式化命令等详见 .claude/steer/foundation/tech.md
 
 ## 目录结构约定
 
 ```
-{{PROJECT_DIR}}/
+yudao-boot-mini/
 ├─ CLAUDE.md           # 本文件，项目 AI 协作说明书
 └─ .claude/
    ├─ steer/          # 项目心智地图（foundation/domain）
@@ -31,8 +31,13 @@
 
 | 目录 | 职责 |
 |------|------|
-| {{DIR_1}} | {{DIR_1_ROLE}} |
-| {{DIR_2}} | {{DIR_2_ROLE}} |
+| yudao-server | 主服务器聚合模块 |
+| yudao-framework | 框架层（starter 组件） |
+| yudao-module-system | 系统功能（用户、角色、权限、字典） |
+| yudao-module-infra | 基础设施（代码生成、文件、定时任务） |
+| yudao-dependencies | BOM 依赖版本管理 |
+| yudao-ui-admin | 前端管理后台（Vue2 + Element-UI） |
+| sql | 数据库初始化脚本 |
 
 > 每个核心目录一行，根据扫描结果增减行数。禁止修改的目录详见 .claude/steer/foundation/never.md
 
@@ -106,7 +111,7 @@
 - **Spec**：.claude/specs/ — 结构化任务流程，先思考再动手
 - **Spec 模板**：.claude/templates/spec/ — 创建 Spec 时读取的模板文件
 - **命令**：/sdc-plan | /sdc-codereview | /sdc-buildfix | /sdc-dev | /sdc-spec
-- **SDA**：sda-architect | sda-code-reviewer | sda-tester | sda-coverage-auditor | sda-build-error-resolver
+- **SDA**：sda-architect | sda-reviewer | sda-db-implementer | sda-backend | sda-frontend | sda-code-reviewer | sda-tester | sda-build-error-resolver
 - **知识库**：.claude/skills/troubleshooting.md
 - **权限/Hooks**：.claude/settings.json + .claude/hooks/
 - **质量门禁**：见第五章质量门禁清单（10 项全绿才交付）

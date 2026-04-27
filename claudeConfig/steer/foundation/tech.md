@@ -6,18 +6,20 @@
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| 前端 | Vue2 + Element-UI | 2.7.14 / 2.15.14 |
-| 后端 | SpringBoot + MyBatis-Plus | 2.7.18 / 3.5.15 |
-| 数据库 | MySQL | 8.0 |
-| 中间件 | Redis + Redisson | 缓存/分布式锁 |
+| 前端 | {{FRONTEND_FRAMEWORK}} | {{VERSION}} |
+| 后端 | {{BACKEND_FRAMEWORK}} | {{VERSION}} |
+| 数据库 | {{DATABASE}} | {{VERSION}} |
+| 中间件 | {{MIDDLEWARE}} | {{PURPOSE}} |
 
 ## 环境配置
 
-- **包管理器**：Maven（后端）/ Yarn（前端）
-- **构建命令**：mvn package（后端）/ yarn build:prod（前端）
-- **测试命令**：mvn test（后端）/ 无（前端，暂无测试脚本）
-- **格式化命令**：无（IDE 格式化）
-- **Lint 命令**：yarn lint（前端）/ 无（后端）
+- **包管理器**：{{PACKAGE_MANAGER}}
+- **构建命令**：{{BUILD_CMD}}
+- **测试命令**：{{TEST_CMD}}
+- **E2E 测试命令**：{{E2E_TEST_CMD}}（如无则标注"无"）
+- **E2E 测试框架**：{{E2E_FRAMEWORK}}
+- **格式化命令**：{{FORMAT_CMD}}
+- **Lint 命令**：{{LINT_CMD}}
 
 ## 环境差异
 
@@ -38,8 +40,8 @@
 
 ## 关键依赖
 
-- MyBatis-Plus：ORM 框架
-- Redisson：Redis 客户端与分布式锁
+- {{DEPENDENCY_1}}：{{PURPOSE}}
+- {{DEPENDENCY_2}}：{{PURPOSE}}
 
 ## 数据库字符集规范
 

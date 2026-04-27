@@ -5,9 +5,10 @@
 
 ## 绝对禁止
 
-- **禁止修改** `{{CORE_DIR}}/` 下的文件（需通过专用工具或人工介入）
+- **禁止修改** `yudao-framework/` 下的文件（需通过专用工具或人工介入）
+- **禁止修改** `yudao-dependencies/` 下的文件（全局版本管理）
 - **禁止硬编码** 密钥、Token、数据库凭证（必须通过环境变量注入）
-- **禁止提交** `.env`、`{{CONFIG_FILE}}` 到 Git
+- **禁止提交** `.env`、`application-prod.yaml` 到 Git
 - **禁止使用** `any` 类型（必须使用具体类型或 `unknown`）
 - **禁止绕过** 安全检查（如 SQL 拼接、XSS 未转义）
 - **禁止修改** rules/ 以外的配置文件作为绕过规则的 workaround
@@ -15,18 +16,18 @@
 
 ## 修改限制
 
-- 修改 {{MODULE}} 前必须先 `/sdc-plan` 并获得确认
-- 修改 {{MODULE}} 需要通知 {{OWNER}}（通过 {{METHOD}}）
+- 修改 yudao-framework 前必须先 `/sdc-plan` 并获得确认
+- 修改 yudao-dependencies 需要通知待填写（通过待填写）
 
 ## 代码风格强制
 
-- 不使用 {{ANTI_PATTERN}}（原因：{{REASON}}）
-- 不引入 {{TECH}}（已在 ADR-{{ID}} 中废弃）
-- 禁止在 {{LOCATION}} 写业务逻辑（应该放在 {{CORRECT_LOCATION}}）
+- 不使用 var 声明（原因：Java 项目应使用具体类型）
+- 不引入 jQuery（已在项目中废弃）
+- 禁止在 Controller 写业务逻辑（应该放在 Service）
 
 ## 已知陷阱
 
 > 这些是团队踩过的坑，避免重蹈覆辙。
 
-1. {{PITFALL_1}}：{{REASON}} → 正确做法：{{CORRECT_PRACTICE}}
-2. {{PITFALL_2}}：{{REASON}} → 正确做法：{{CORRECT_PRACTICE}}
+1. 数据库字段类型不匹配：Java 类型与数据库类型映射不一致 → 正确做法：使用统一的类型映射
+2. 前端路由与后端权限不同步：新增页面未同步权限配置 → 正确做法：页面和权限同步更新

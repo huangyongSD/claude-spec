@@ -11,7 +11,7 @@ $f = $j.tool_input.file_path
 if (-not $f) { echo 0; exit }
 
 # Code file formatting reminder
-$FILE_EXTENSIONS = "(java|xml|vue|js|yaml|scss|sql)$"
+$FILE_EXTENSIONS = "(java|xml|vue|js|sql)$"
 if ($f -match $FILE_EXTENSIONS) {
   Write-Host ("[Hook] " + $j.tool_name + " file: " + $f + " - Format: backend 'mvn spotless:apply', frontend 'yarn lint'")
 }

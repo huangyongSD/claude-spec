@@ -201,8 +201,7 @@ E2E 测试框架：Playwright（已配置）/ 未配置
 | 24 | `.claude/agents/sda-frontend.md` | **新增** | 前端实现 SDA |
 | 25 | `.claude/agents/sda-tester.md` | **新增** | E2E 测试 SDA |
 | 26 | `.claude/agents/sda-code-reviewer.md` | **需要** | 增强审查清单 |
-| 27 | `.claude/agents/sda-coverage-auditor.md` | **新增** | 覆盖率审计 SDA |
-| 28 | `.claude/agents/sda-build-error-resolver.md` | **需要** | 适配技术栈，删除不相关的诊断条目 |
+| 27 | `.claude/agents/sda-build-error-resolver.md` | **需要** | 适配技术栈，删除不相关的诊断条目 |
 | 29 | `.claude/skills/troubleshooting.md` | **需要** | 适配技术栈 |
 | 30 | `.claude/settings.json` | **需要** | 填入包管理器、文件扩展名和格式化命令 |
 | 31 | `.claude/hooks/pre-bash-check.ps1` | **需要** | PreToolUse Hook 脚本（PowerShell） |
@@ -269,7 +268,7 @@ git commit -m "chore: add Claude Code team collaboration config
 - steer/domain/: quality-gate.md, api.md, testing.md, security.md — project mental map (按需加载)
 - rules: security (🔴), testing (🟡🟢), git (🟡🟢) with tiered enforcement
 - commands: /sdc-plan, /sdc-codereview, /sdc-buildfix, /sdc-dev, /sdc-spec
-- agents: sda-architect, sda-reviewer, sda-code-reviewer, sda-db-implementer, sda-backend, sda-frontend, sda-tester, sda-coverage-auditor, sda-build-error-resolver（9 个专用 SDA）
+- agents: sda-architect, sda-reviewer, sda-code-reviewer, sda-db-implementer, sda-backend, sda-frontend, sda-tester, sda-build-error-resolver（8 个专用 SDA）
 - skills: troubleshooting knowledge base
 - settings: permissions + hook scripts (.claude/hooks/)
 - .gitignore: added .env"
@@ -326,7 +325,7 @@ git push -u origin chore/add-claude-code-team-config
 | 序号 | 失败项 | 处理方式 |
 |------|--------|---------|
 | 1 | 编译失败 | sda-build-error-resolver agent 修复 |
-| 2 | 覆盖率不足 | sda-tester agent 补充测试，sda-coverage-auditor agent 审计 |
+| 2 | 覆盖率不足 | sda-tester agent 补充测试 |
 | 3 | 测试失败 | 分析是测试代码 bug 还是被测系统 bug，对应 SDA 修复 |
 | 4 | 页面 404 | 前端开发者（人工）检查路由配置，E2E 测试覆盖所有路由 |
 | 5 | API 500 | 后端开发者（人工或 sda-backend agent，如有配置）修复错误处理逻辑，前端开发者加容错机制 |
@@ -463,7 +462,7 @@ jobs:
   - 6.7.5-6.7.8 domain/ — quality-gate / api / testing / security
   - 6.7.9 frontend/ — 前端开发规范（可选）
 - **6.8-6.12 commands/** — 斜杠命令（plan / code-review / build-fix / dev / spec，共 5 个文件）
-- **6.13-6.21 agents/** — 专用子代理（sda-architect / sda-code-reviewer / sda-reviewer / sda-db-implementer / sda-backend / sda-frontend / sda-tester / sda-coverage-auditor / sda-build-error-resolver，共 9 个文件）
+- **6.13-6.20 agents/** — 专用子代理（sda-architect / sda-code-reviewer / sda-reviewer / sda-db-implementer / sda-backend / sda-frontend / sda-tester / sda-build-error-resolver，共 8 个文件）
 - **6.22 skills/** — 知识库（troubleshooting）
 - **6.23 settings.json + hooks/** — 权限配置与 Hook 脚本（settings.json + 2 个脚本文件）
 - **6.24 .gitignore** — Git 忽略规则追加
@@ -591,7 +590,7 @@ jobs:
 - **Spec**：.claude/specs/ — 结构化任务流程，先思考再动手
 - **Spec 模板**：.claude/templates/spec/ — 创建 Spec 时读取的模板文件
 - **命令**：/sdc-plan | /sdc-codereview | /sdc-buildfix | /sdc-dev | /sdc-spec
-- **SDA**：sda-architect | sda-code-reviewer | sda-tester | sda-coverage-auditor | sda-build-error-resolver
+- **SDA**：sda-architect | sda-code-reviewer | sda-tester | sda-build-error-resolver
 - **知识库**：.claude/skills/troubleshooting.md
 - **权限/Hooks**：.claude/settings.json + .claude/hooks/
 - **质量门禁**：见第五章质量门禁清单（10 项全绿才交付）
@@ -1064,8 +1063,7 @@ sda-db+sda-backend → sda-frontend → sda-tester → sda-code-reviewer
 | sda-frontend | 实现 | 前端实现 | 创建 API 定义、页面、组件 | 6.18 节 |
 | sda-tester | 实现 | 测试工程师 | 编写/修复 E2E 测试 | 6.19 节 |
 | sda-code-reviewer | 实现 | 代码审查 | 审查质量/安全/可维护性 | 6.14 节 |
-| sda-coverage-auditor | 实现 | 覆盖率审计 | 独立审计覆盖率真实性 | 6.20 节 |
-| sda-build-error-resolver | 实现 | 构建排障 | 修复构建/测试错误 | 6.21 节 |
+| sda-build-error-resolver | 实现 | 构建排障 | 修复构建/测试错误 | 6.20 节 |
 
 > **阶段说明**：Spec 阶段的 SDA（sda-architect、sda-reviewer）由 `/sdc-spec` 命令调度，产出设计文档和测试用例文档；实现阶段的 SDA（sda-db-implementer 至 sda-build-error-resolver）由 `/sdc-dev` 命令调度，产出代码和测试。两个阶段不可交叉——实现阶段必须等 Spec 阶段全部完成（四个 Spec 文件均通过评审）后才开始。
 
@@ -1084,12 +1082,10 @@ sda-db+sda-backend → sda-frontend → sda-tester → sda-code-reviewer
 
 **可并行**（无文件冲突）：
 - sda-tester + sda-frontend（不同目录）
-- sda-coverage-auditor + 任何 SDA（只读）
 - 多个调查 SDA
 
 **必须串行**（有文件依赖）：
 - sda-backend 修复 → sda-tester 重跑
-- sda-coverage-auditor 审计 → sda-tester 修复虚假覆盖
 
 ## 🟢 逐步达标
 
@@ -1417,7 +1413,7 @@ updated: 2026-04-22
 | 序号 | 失败项 | 处理方式 | 责任人 |
 |------|--------|---------|--------|
 | 1 | 编译失败 | sda-build-error-resolver agent 修复 | SDA |
-| 2 | 覆盖率不足 | sda-tester agent 补充测试，sda-coverage-auditor agent 审计 | SDA |
+| 2 | 覆盖率不足 | sda-tester agent 补充测试 | SDA |
 | 3 | 测试失败 | 分析 bug 来源，对应 SDA 修复 | SDA/人工 |
 | 4 | 页面 404 | 检查路由配置，E2E 测试覆盖所有路由 | 前端开发者 |
 | 5 | API 500 | 修复错误处理逻辑，前端加容错机制 | 后端开发者 |
@@ -2006,7 +2002,6 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 | sda-frontend | .claude/agents/sda-frontend.md | 创建 API 定义、页面、组件 |
 | sda-tester | .claude/agents/sda-tester.md | 编写/修复 E2E 测试 |
 | sda-code-reviewer | .claude/agents/sda-code-reviewer.md | 审查质量/安全/可维护性 |
-| sda-coverage-auditor | .claude/agents/sda-coverage-auditor.md | 独立审计覆盖率真实性 |
 | sda-build-error-resolver | .claude/agents/sda-build-error-resolver.md | 修复构建/测试错误 |
 
 ### 修复机制（无独立配置文件，复用实现 SDA）
@@ -3256,84 +3251,7 @@ expect(errors.filter(e => !isKnownNoise(e))).toEqual([])
 
 ---
 
-### 6.20 agents/sda-coverage-auditor.md
-
-**新增配置文件，覆盖率审计专用 SDA。**
-
-```markdown
----
-name: sda-coverage-auditor
-description: 覆盖率审计 SDA，独立审计测试覆盖率真实性
-tools: Read, Grep, Glob
-
----
-
-# Coverage Auditor SDA
-
-你是测试覆盖率审计专家，负责独立审计测试覆盖率的真实性。
-
-## 审计原则
-
-**覆盖率审计必须独立于测试编写者。编写测试的 SDA 不能自己审计覆盖率。**
-
-## 审计维度
-
-### 虚假覆盖检测
-
-| 问题类型 | 特征 | 危害 |
-|----------|------|------|
-| 纯单元测试伪装 E2E | 无 `page.goto()`、无浏览器交互 | 不验证真实 UI |
-| 断言逻辑反转 | 应验证"看不到"却验证"看到" | 结论相反 |
-| 只检查存在不执行操作 | 只 `toBeVisible()` 不 `click()` | 不验证交互 |
-| 条件跳过掩盖失败 | `if (condition) test.skip()` | 隐藏真实问题 |
-| 步骤独立不串联 | 流程测试各步骤互不依赖 | 不验证端到端 |
-
-### "功能未实现"独立验证
-
-AI 标记为"功能未实现"的需求，必须独立验证：
-1. 搜索相关 API 路由、前端页面、组件
-2. AI 可能因为找不到精确匹配的代码就判定为未实现
-3. 功能可能以不同命名或结构存在
-
-**实践中发现**：6 项被标记为"未实现"的需求中有 5 项实际已实现。
-
-## 审计流程
-
-1. 读取 test-cases.md，确认每个 AC 有对应测试用例
-2. 检查每个测试文件是否真的与浏览器交互
-3. 验证断言是否有效（不是条件跳过、不是吞失败）
-4. 确认测试数据覆盖关键角色组合（至少包含超级管理员、普通用户、无权限用户）
-5. 独立验证"未实现"标记是否准确
-
-## 输出格式
-
-## 覆盖率审计报告
-
-### 真实覆盖率
-- 需求覆盖：N/M 个需求（N%）
-- 角色覆盖：N/M 个角色
-- 页面覆盖：N/M 个页面
-
-### 虚假覆盖问题
-- [文件:用例名] [问题描述]
-
-### 未实现验证结果
-- [需求名]：实际已实现 / 确实未实现
-
-### 建议
-- [改进建议1]
-- [改进建议2]
-
-## 关键洞察
-
-- "测试存在" ≠ "测试有效"：必须检查测试是否真的与浏览器交互并做有意义的断言
-- 测试覆盖率不等于测试有效性：不要相信"感觉覆盖了"
-- 独立审计避免自我评价偏差
-```
-
----
-
-### 6.21 agents/sda-build-error-resolver.md
+### 6.20 agents/sda-build-error-resolver.md
 
 **需要根据项目技术栈选择对应条目，删除不相关的诊断能力。**
 

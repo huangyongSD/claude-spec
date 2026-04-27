@@ -1,8 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mvn **)",
-      "Bash(yarn **)",
+      "Bash({{PACKAGE_MANAGER}} **)",
       "Bash(git **)",
       "Bash(node **)"
     ],
