@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Read-only database query tool.
+Read-only database query tool (PostgreSQL).
 
-Only SELECT/SHOW/DESC/DESCRIBE queries are allowed.
+Only SELECT queries are allowed. SHOW/DESC equivalents use information_schema.
 Connection info is read from .claude/tools/secrets.json.
 """
 
@@ -11,12 +11,11 @@ import json
 import os
 import re
 import sys
-import signal
 
 try:
-    import pymysql
+    import psycopg2
 except ImportError:
-    print("ERROR: pymysql is not installed. Run: pip install -r .claude/tools/requirements.txt")
+    print("ERROR: psycopg2 is not installed. Run: pip install -r .claude/tools/requirements.txt")
     sys.exit(1)
 
 
@@ -71,14 +70,12 @@ def get_connection_config(secrets, source="master"):
         "database": real[name_key],
         "user": real[user_key],
         "password": real[pass_key],
-        "charset": "utf8mb4",
     }
     return config
 
 
 def validate_query(query):
     """Validate that the query is read-only and single-statement."""
-    # Remove trailing semicolon and whitespace for validation
     stripped = query.strip()
     if stripped.endswith(";"):
         stripped = stripped[:-1].strip()
@@ -87,20 +84,22 @@ def validate_query(query):
     match = BLOCKED_KEYWORDS.search(stripped)
     if match:
         print("ERROR: Blocked SQL keyword detected: " + match.group(1))
-        print("Only SELECT/SHOW/DESC/DESCRIBE queries are allowed.")
+        print("Only SELECT queries are allowed.")
         sys.exit(1)
 
-    # Check for multiple statements (semicolons with content after them)
+    # Check for multiple statements
     if MULTI_STATEMENT_PATTERN.search(stripped):
         print("ERROR: Multiple statements detected. Only single statements are allowed.")
         sys.exit(1)
 
-    # Verify it starts with an allowed keyword
-    allowed_start = re.compile(
-        r'^\s*(SELECT|SHOW|DESC|DESCRIBE)\b', re.IGNORECASE
-    )
+    # Verify it starts with SELECT
+    allowed_start = re.compile(r'^\s*SELECT\b', re.IGNORECASE)
     if not allowed_start.match(stripped):
-        print("ERROR: Query must start with SELECT, SHOW, DESC, or DESCRIBE.")
+        print("ERROR: Query must start with SELECT.")
+        print("For table inspection, use information_schema queries like:")
+        print("  SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        print("  SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'xxx'")
+        print("  SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'xxx'")
         sys.exit(1)
 
     return stripped
@@ -144,34 +143,26 @@ def show_config(secrets, source="master"):
     print("  Database: " + config["database"])
     print("  Username: " + config["user"])
     print("  Password: ****")
-    print("  Charset:  " + config["charset"])
 
 
 def execute_query(config, query, limit=100, timeout=30):
     """Execute the validated read-only query and return results."""
-    # Add LIMIT if not already present and it's a SELECT
     limit_clause = ""
-    if re.match(r'^\s*SELECT\b', query, re.IGNORECASE):
-        if not re.search(r'\bLIMIT\b', query, re.IGNORECASE):
-            limit_clause = " LIMIT " + str(limit)
+    if not re.search(r'\bLIMIT\b', query, re.IGNORECASE):
+        limit_clause = " LIMIT " + str(limit)
 
     full_query = query + limit_clause
 
-    # Set timeout via signal (Unix) or connection timeout
-    connection_timeout = min(timeout, 30)
-
     try:
-        connection = pymysql.connect(
+        connection = psycopg2.connect(
             host=config["host"],
             port=config["port"],
             user=config["user"],
             password=config["password"],
-            database=config["database"],
-            charset=config["charset"],
-            connect_timeout=connection_timeout,
-            read_timeout=timeout,
+            dbname=config["database"],
+            connect_timeout=timeout,
         )
-    except pymysql.err.OperationalError as e:
+    except psycopg2.OperationalError as e:
         print("ERROR: Connection failed: " + str(e))
         print("  Host: " + config["host"] + ", Port: " + str(config["port"]))
         print("  Database: " + config["database"] + ", User: " + config["user"])
@@ -182,10 +173,10 @@ def execute_query(config, query, limit=100, timeout=30):
             cursor.execute(full_query)
             rows = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description] if cursor.description else []
-    except pymysql.err.OperationalError as e:
+    except psycopg2.OperationalError as e:
         print("ERROR: Query execution failed: " + str(e))
         sys.exit(1)
-    except pymysql.err.ProgrammingError as e:
+    except psycopg2.ProgrammingError as e:
         print("ERROR: Query syntax error: " + str(e))
         sys.exit(1)
     finally:
@@ -201,13 +192,11 @@ def format_as_json(columns, rows):
         row_dict = {}
         for i, col in enumerate(columns):
             value = row[i]
-            # Convert bytes to string for JSON serialization
             if isinstance(value, bytes):
                 try:
                     value = value.decode("utf-8")
                 except UnicodeDecodeError:
                     value = value.decode("utf-8", errors="replace")
-            # Convert decimal.Decimal to float
             if hasattr(value, '__float__'):
                 value = float(value)
             row_dict[col] = value
@@ -220,7 +209,6 @@ def format_as_table(columns, rows):
     if not columns:
         return "(no results)"
 
-    # Compute column widths
     str_rows = []
     for row in rows:
         str_row = []
@@ -240,17 +228,14 @@ def format_as_table(columns, rows):
         for i, val in enumerate(row):
             widths[i] = max(widths[i], len(val))
 
-    # Build header
     header = " | ".join(col.ljust(widths[i]) for i, col in enumerate(columns))
     separator = "-+-".join("-" * w for w in widths)
 
-    # Build rows
     lines = [header, separator]
     for row in str_rows:
         line = " | ".join(val.ljust(widths[i]) for i, val in enumerate(row))
         lines.append(line)
 
-    # Add row count
     lines.append("")
     lines.append("(" + str(len(rows)) + " rows)")
 
@@ -259,7 +244,7 @@ def format_as_table(columns, rows):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Read-only database query tool. Only SELECT/SHOW/DESC/DESCRIBE allowed."
+        description="Read-only PostgreSQL query tool. Only SELECT allowed."
     )
     parser.add_argument("--query", required=False, help="SQL query to execute")
     parser.add_argument("--source", choices=["master", "slave"], default="master",
@@ -286,16 +271,13 @@ def main():
     if not args.query:
         parser.error("--query is required unless --show-config is used")
 
-    # Check confirmation
     if not is_confirmed() and not args.confirm:
         print("ERROR: Connection not confirmed. First run requires --confirm flag.")
-        print("Run: python .claude/tools/db-query.py --confirm --query \"SHOW TABLES\"")
-        print("Or run with --confirm for interactive confirmation.")
+        print("Run: python .claude/tools/db-query.py --confirm --query \"SELECT tablename FROM pg_tables WHERE schemaname = 'public'\"")
         sys.exit(1)
 
     config = get_connection_config(secrets, args.source)
 
-    # Confirmation: --confirm flag auto-confirms (for non-interactive/AI use), otherwise interactive
     if not is_confirmed():
         if args.confirm:
             mark_confirmed()
@@ -303,13 +285,9 @@ def main():
         else:
             confirm_interactive(config)
 
-    # Validate the query
     validated_query = validate_query(args.query)
-
-    # Execute
     columns, rows = execute_query(config, validated_query, args.limit, args.timeout)
 
-    # Format output
     if args.format == "json":
         print(format_as_json(columns, rows))
     else:

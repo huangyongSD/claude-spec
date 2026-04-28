@@ -20,7 +20,7 @@ globs: ["**/*.java", "**/*.sql", "**/*.vue", "**/*.js", "**/*.yaml", "**/*.yml",
 ### SQL 安全
 
 4. **禁止 SQL 拼接** — 必须使用参数化查询（MyBatis 中使用 `#{}` 而非 `${}`，`${}` 存在注入风险）
-5. **SQL 脚本必须声明字符集** — `SET NAMES utf8mb4; SET CHARACTER SET utf8mb4;`（见 CLAUDE.md 数据库规范）
+5. **SQL 脚本必须标注数据库类型** — `-- DB_TYPE: PostgreSQL`（见 CLAUDE.md 数据库规范和 dbinfo.md）
 
 ### Web 安全
 
@@ -32,7 +32,7 @@ globs: ["**/*.java", "**/*.sql", "**/*.vue", "**/*.js", "**/*.yaml", "**/*.yml",
 8. **API 响应层 nil 集合兜底** — 序列化前拦截 nil 集合类型，返回空数组/列表 `[]` 而非 `null`
 9. **写操作校验直属关系** — 防止 IDOR 横向越权，必须校验操作者与目标的直属关系
 10. **用 VO/DTO 接收前端参数** — 禁止直接绑定数据库 DO/Entity，防止字段注入
-11. **权限注解用 hasPermission 非 hasRole** — `@PreAuthorize("@ss.hasPermission('xxx:action')")` 而非 `@PreAuthorize("hasRole('MANAGER')")`。角色检查 ≠ 权限检查
+11. **权限注解用 hasPermi 非 hasRole** — `@PreAuthorize("@ss.hasPermi('xxx:action')")` 而非 `@PreAuthorize("hasRole('MANAGER')")`。角色检查 ≠ 权限检查
 
 ### 前端安全
 
@@ -61,7 +61,7 @@ globs: ["**/*.java", "**/*.sql", "**/*.vue", "**/*.js", "**/*.yaml", "**/*.yml",
 ## 关键洞察
 
 - **nil 集合序列化为 null 后前端 `.map()` 直接崩溃**：响应层统一兜底是最高效的修复点（详见 frontend.md 🔴1-4）
-- **角色检查 ≠ 权限检查**：`hasRole('MANAGER')` 只验证角色，`hasPermission('xxx:action')` 验证功能权限。写操作必须用权限检查
+- **角色检查 ≠ 权限检查**：`hasRole('MANAGER')` 只验证角色，`@ss.hasPermi('xxx:action')` 验证功能权限。写操作必须用权限检查
 - **字段注入是隐形漏洞**：直接绑定 DO 意味着攻击者可以传入数据库有但表单没有的字段（如 `id`、`deleted`、`tenantId`）
 
 ## 变更记录

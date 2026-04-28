@@ -70,17 +70,17 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 - 数据迁移脚本（INSERT/UPDATE/DELETE）
 - 字段变更脚本（ALTER TABLE）
 
-### 2. DO 实体类实现
-- 对应数据库表的实体类
-- MyBatis-Plus 注解配置
+### 2. Domain 实体类实现
+- 对应数据库表的实体类（extends BaseEntity）
+- 无 MyBatis-Plus 注解（本项目使用纯 MyBatis）
 - 枚举字段处理
 - 敏感字段加密处理
 
 ### 3. Mapper 接口实现
-- BaseMapper 继承
+- 纯 MyBatis Mapper 接口（无 BaseMapper 继承）
 - 自定义查询方法
 - 批量操作方法
-- 复杂查询 XML 映射
+- XML 映射文件配置
 
 ### 4. 性能能力
 
@@ -123,9 +123,8 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 - 日志中禁止打印敏感字段
 
 #### SQL 注入防护
-- 使用 MyBatis-Plus 参数绑定
-- 禁止字符串拼接 SQL
-- 动态 SQL 使用安全标签
+- 使用 MyBatis 参数绑定（`#{}`），禁止字符串拼接 SQL
+- `${}` 仅用于数据权限过滤（`${params.dataScope}`），禁止用于用户输入
 
 ### 6. 数据迁移能力
 
@@ -138,16 +137,18 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 #### 迁移脚本模板
 ```sql
 -- 迁移脚本：xxx_migration.sql
--- 执行前备份：mysqldump -u root -p db_name table_name > backup.sql
+-- DB_TYPE: PostgreSQL
+-- 执行前备份：pg_dump -U postgres -d ruoyi -t table_name > backup.sql
 
 -- 1. 添加新字段
-ALTER TABLE `table_name` ADD COLUMN `new_field` VARCHAR(100) COMMENT '新字段';
+ALTER TABLE "public"."table_name" ADD COLUMN "new_field" varchar(100);
+COMMENT ON COLUMN "public"."table_name"."new_field" IS '新字段';
 
 -- 2. 数据迁移（分批处理）
-UPDATE `table_name` SET `new_field` = `old_field` WHERE `new_field` IS NULL LIMIT 1000;
+UPDATE "public"."table_name" SET "new_field" = "old_field" WHERE "new_field" IS NULL;
 
 -- 3. 验证
-SELECT COUNT(*) FROM `table_name` WHERE `new_field` IS NULL;
+SELECT COUNT(*) FROM "public"."table_name" WHERE "new_field" IS NULL;
 ```
 
 ## 规范约束
@@ -156,102 +157,95 @@ SELECT COUNT(*) FROM `table_name` WHERE `new_field` IS NULL;
 
 **在生成任何 SQL 之前，必须完成以下步骤：**
 
-1. **搜索 @TableName 注解获取现有表名模式**
+1. **搜索 Domain 类获取现有表名模式**
    ```
-   Grep("@TableName", glob="**/*.java")
+   Grep("extends BaseEntity", glob="**/*.java")
    ```
-   从 DO 类的 `@TableName("表名")` 获取真实表名
+   从 Domain 类的命名推断对应表名（如 `SysUser` → `sys_user`）
 
 2. **分析现有表名命名模式**
-   - 检查现有表名前缀（如 `t_`、`sys_`、`app_` 等）
+   - 检查现有表名前缀（如 `sys_`、`gen_` 等）
    - 新建表必须与现有表命名模式保持一致
-   - 示例：现有业务表为 `t_user`、`t_order`，则新建表应为 `t_xxx`
+   - 示例：现有系统表为 `sys_user`、`sys_dept`，则业务新建表应为 `biz_xxx` 或按业务约定
 
 3. **检查已有 SQL 脚本**
-   - 路径：`sql/mysql/*.sql`
+   - 路径：`sql/*.sql`
    - **已有表的 DDL 不得重复创建**
 
 4. **禁止臆测表名**
    - 不得使用未经验证的表名
    - 不得假设表结构，必须从代码或 SQL 文件中确认
-   - 必须展示 `@TableName` 的搜索结果作为表名来源证明
+   - 必须展示 Domain 类搜索结果作为表名来源证明
    - 新建表名必须符合现有命名模式
 
-### SQL 脚本规范
-> 字符集规范见 CLAUDE.md 数据库规范节，以下为 SQL 模板：
+### SQL 脜本规范
+> 本项目使用 PostgreSQL，字符集为 UTF-8（服务端默认），以下为 SQL 模板：
 ```sql
-SET NAMES utf8mb4;
+-- DB_TYPE: PostgreSQL
 
-CREATE TABLE `table_name` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+CREATE TABLE "public"."table_name" (
+  "table_name_id" bigserial,
   -- 业务字段
-  `name` varchar(100) NOT NULL DEFAULT '' COMMENT '名称',
-  `status` tinyint NOT NULL DEFAULT 0 COMMENT '状态（0-禁用 1-启用）',
+  "name" varchar(100) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "status" char(1) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '0',
   -- 审计字段
-  `creator` varchar(64) NOT NULL DEFAULT '' COMMENT '创建者',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `updater` varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted` tinyint NOT NULL DEFAULT 0 COMMENT '是否删除',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='表说明';
+  "create_by" varchar(64) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "create_time" timestamp(6),
+  "update_by" varchar(64) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "update_time" timestamp(6),
+  "remark" varchar(500) COLLATE "pg_catalog"."default",
+  "del_flag" char(1) NOT NULL DEFAULT '0'
+);
+COMMENT ON COLUMN "public"."table_name"."table_name_id" IS '主键';
+COMMENT ON COLUMN "public"."table_name"."name" IS '名称';
+COMMENT ON COLUMN "public"."table_name"."status" IS '状态（0-禁用 1-启用）';
+COMMENT ON TABLE "public"."table_name" IS '表说明';
 
 -- 索引
-CREATE INDEX `idx_name` ON `table_name` (`name`);
-CREATE INDEX `idx_create_time` ON `table_name` (`create_time`);
+CREATE INDEX "idx_table_name_name" ON "public"."table_name" ("name");
+CREATE INDEX "idx_table_name_create_time" ON "public"."table_name" ("create_time");
 ```
 
 ### 字段命名规范
 - 遵循项目现有风格（snake_case）
-- 主键统一为 `id`（bigint, AUTO_INCREMENT）
-- 必须包含：`creator`, `create_time`, `updater`, `update_time`, `deleted`
-- 逻辑删除字段：`deleted`（tinyint, 默认 0）
-- 状态字段：`status`（tinyint, 配合枚举）
-- 时间字段：`xxx_time`（datetime）
+- 主键统一为 `xxx_id`（bigserial/bigint，PostgreSQL 自增）
+- 必须包含：`create_by`, `create_time`, `update_by`, `update_time`, `del_flag`
+- 逻辑删除字段：`del_flag`（char(1)，默认 '0'）
+- 状态字段：`status`（char(1)，配合含义注释）
+- 时间字段：`xxx_time`（timestamp(6)）
 
-### DO 实体类规范
+### Domain 实体类规范
 ```java
-@TableName("table_name")
-@KeySequence("table_name_seq")
-@Data
-@EqualsAndHashCode(callSuper = true)
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class XxxDO extends BaseDO {
-    
-    @TableId
-    private Long id;
-    
+public class XxxDomain extends BaseEntity {
+
+    private Long xxxId;
+
     @Schema(description = "名称")
     private String name;
-    
+
     @Schema(description = "状态（0-禁用 1-启用）")
-    private Integer status;
-    
-    @Schema(description = "手机号（加密）")
-    @TableField(typeHandler = EncryptTypeHandler.class)
-    private String mobile;
+    private String status;
+
+    /** 逻辑删除标志（0-存在 2-删除） */
+    private String delFlag;
 }
 ```
 
 ### Mapper 接口规范
 ```java
-@Mapper
-public interface XxxMapper extends BaseMapper<XxxDO> {
+public interface XxxMapper {
 
-    default PageResult<XxxDO> selectPage(XxxPageReqVO reqVO) {
-        return selectPage(reqVO, new LambdaQueryWrapperX<XxxDO>()
-                .likeIfPresent(XxxDO::getName, reqVO.getName())
-                .eqIfPresent(XxxDO::getStatus, reqVO.getStatus())
-                .orderByDesc(XxxDO::getId));
-    }
-    
-    default List<XxxDO> selectList(XxxExportReqVO reqVO) {
-        return selectList(new LambdaQueryWrapperX<XxxDO>()
-                .likeIfPresent(XxxDO::getName, reqVO.getName())
-                .orderByDesc(XxxDO::getId));
-    }
+    public List<XxxDomain> selectXxxList(XxxDomain xxx);
+
+    public XxxDomain selectXxxById(Long xxxId);
+
+    public int insertXxx(XxxDomain xxx);
+
+    public int updateXxx(XxxDomain xxx);
+
+    public int deleteXxxById(Long xxxId);
+
+    public int deleteXxxByIds(Long[] xxxIds);
 }
 ```
 
@@ -270,34 +264,36 @@ public interface XxxMapper extends BaseMapper<XxxDO> {
 2. **如编译失败**：调用 sda-build-error-resolver 诊断并修复错误
 
 ### 数据库验证
-使用数据库验证工具检查：
+使用数据库验证工具检查（PostgreSQL 命令）：
 ```bash
 # 检查表是否存在
-python .claude/tools/db-query.py --query "SHOW TABLES LIKE 'table_name'" --format table
+python .claude/tools/db-query.py --query "SELECT tablename FROM pg_tables WHERE tablename = 'table_name'" --format table
 
 # 检查表结构
-python .claude/tools/db-query.py --query "DESC table_name" --format table
+python .claude/tools/db-query.py --query "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'table_name'" --format table
 
 # 检查索引
-python .claude/tools/db-query.py --query "SHOW INDEX FROM table_name" --format table
+python .claude/tools/db-query.py --query "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'table_name'" --format table
 ```
 
 ### 检查清单
 - [ ] 表名与 DO 类 @TableName 一致
 - [ ] 字段命名符合 snake_case 规范
-- [ ] 必须字段已包含（creator/create_time/updater/update_time/deleted）
-- [ ] 字符集为 utf8mb4
+- [ ] 必须字段已包含（create_by/create_time/update_by/update_time/del_flag）
+- [ ] 字符集为 UTF-8（PostgreSQL 服务端默认）
+- [ ] SQL 标注 `-- DB_TYPE: PostgreSQL`
 - [ ] 索引命名符合规范
 - [ ] 敏感字段已标注加密处理
-- [ ] DO 类注解配置完整
+- [ ] Domain 类命名符合项目风格（SysXxx 或 XxxDomain）
+- [ ] Domain 类 extends BaseEntity
 
 ## 输出文件
 
 | 类型 | 文件路径 | 说明 |
 |------|----------|------|
-| SQL | sql/mysql/xxx.sql | 建表脚本 |
-| DO | dal/dataobject/xxx/XxxDO.java | 实体类 |
-| Mapper | dal/mysql/xxx/XxxMapper.java | Mapper 接口 |
+| SQL | sql/xxx.sql | 建表脚本（PostgreSQL） |
+| Domain | domain/XxxDomain.java | 实体类 |
+| Mapper | mapper/XxxMapper.java | Mapper 接口 |
 
 ## 写文件规则
 
@@ -319,12 +315,12 @@ python .claude/tools/db-query.py --query "SHOW INDEX FROM table_name" --format t
 
 ### 规范相关
 - 参考 project_databases.md 了解现有表结构风格
-- 字符集必须为 utf8mb4，支持 emoji
-- 逻辑删除字段名与项目一致
-- 表名、字段名使用 snake_case
+- 字符集为 UTF-8（PostgreSQL 服务端默认）
+- 逻辑删除字段名 `del_flag`，与项目一致
+- 表名、字段名使用 snake_case，PostgreSQL 使用双引号
 
 ### 协作相关
-- 表结构变更需通知后端开发更新 DO 类
+- 表结构变更需通知后端开发更新 Domain 类
 - 新增字段需考虑数据迁移
 - 索引变更需评估对现有查询的影响
 

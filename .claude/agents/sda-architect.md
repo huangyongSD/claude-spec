@@ -83,7 +83,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 #### 前端接口设计
 - 页面组件与数据结构映射
-- 状态管理方案设计（Vuex/Pinia）
+- 状态管理方案设计（Vuex 3.x 模块化）
 - 前端路由与权限控制设计
 - 组件间通信接口定义
 - 输出前端接口文档
@@ -119,7 +119,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 - 输出风险评估矩阵
 
 ### 8. 安全设计
-- 权限模型设计（角色 vs 权限区分，@PreAuthorize 与前端路由守卫同步）
+- 权限模型设计（角色 vs 权限区分，@PreAuthorize("@ss.hasPermi") 与前端 v-hasPermi 同步）
 - IDOR 防护设计（写操作校验直属关系）
 - 输入安全设计（SQL 注入防护、XSS 防护、DTO 隔离）
 - nil 集合兜底设计（后端响应层拦截 null 集合，前端防御性消费）
@@ -127,7 +127,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ### 9. 前端设计
 - 页面设计与路由规划
-- 菜单配置设计（sys_menu 记录，一级 path 以 `/` 开头）
+- 菜单配置设计（sys_menu 记录，一级 path 以 `/` 开头，perms 字段格式 `xxx:add/edit/remove/list/query`）
 - 防御性数据消费模式（?? [] / 可选链 / 数值守卫 / 错误处理）
 - 组件设计（列表页 / 表单弹窗 / 公共组件）
 - 输出前端设计章节

@@ -170,55 +170,42 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 规范约束
 
-### VO 类规范
+### Domain 类规范（本项目无独立 VO，直接使用 Domain 类接收/返回）
 ```java
-@Data
-public class XxxSaveReqVO {
-    @Schema(description = "主键")
-    private Long id;
+public class XxxDomain extends BaseEntity {
+    private Long xxxId;
 
-    @Schema(description = "名称", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "名称不能为空")
     private String name;
-}
 
-@Data
-@EqualsAndHashCode(callSuper = true)
-public class XxxPageReqVO extends PageParam {
-    @Schema(description = "名称")
-    private String name;
-}
-
-@Data
-public class XxxRespVO {
-    @Schema(description = "主键")
-    private Long id;
-    // ...
+    private String status;
 }
 ```
 
+> 注：若依项目不使用独立 VO/DTO，Controller 直接用 Domain 类接收参数和返回数据。如需防止字段注入，建议在 Domain 类中用 `@JsonIgnore` 或分组校验控制字段可见性。
+
 ### Service 规范
 ```java
-public interface XxxService {
-    Long createXxx(@Valid XxxSaveReqVO createReqVO);
-    void updateXxx(@Valid XxxSaveReqVO updateReqVO);
-    void deleteXxx(Long id);
-    XxxRespVO getXxx(Long id);
-    PageResult<XxxRespVO> getXxxPage(XxxPageReqVO pageReqVO);
+public interface ISysXxxService {
+    public List<XxxDomain> selectXxxList(XxxDomain xxx);
+    public XxxDomain selectXxxById(Long xxxId);
+    public int insertXxx(XxxDomain xxx);
+    public int updateXxx(XxxDomain xxx);
+    public int deleteXxxByIds(Long[] xxxIds);
 }
 
 @Service
-@Validated
-public class XxxServiceImpl implements XxxService {
-    @Resource
+public class SysXxxServiceImpl implements ISysXxxService {
+    @Autowired
     private XxxMapper xxxMapper;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createXxx(XxxSaveReqVO createReqVO) {
+    @Transactional
+    public int insertXxx(XxxDomain xxx) {
         // 1. 校验
-        // 2. 转换
+        // 2. 设置默认值
         // 3. 保存
+        return xxxMapper.insertXxx(xxx);
     }
 }
 ```
@@ -227,33 +214,55 @@ public class XxxServiceImpl implements XxxService {
 ```java
 @RestController
 @RequestMapping("/xxx")
-@Tag(name = "管理后台 - XXX")
-public class XxxController {
-    @Resource
-    private XxxService xxxService;
+public class XxxController extends BaseController {
+    @Autowired
+    private ISysXxxService xxxService;
 
-    @PostMapping("/create")
-    @Operation(summary = "创建XXX")
-    @PreAuthorize("@ss.hasPermission('xxx:create')")
-    public CommonResult<Long> createXxx(@Valid @RequestBody XxxSaveReqVO createReqVO) {
-        return success(xxxService.createXxx(createReqVO));
+    @PreAuthorize("@ss.hasPermi('xxx:list')")
+    @GetMapping("/list")
+    public TableDataInfo list(XxxDomain xxx) {
+        startPage();
+        List<XxxDomain> list = xxxService.selectXxxList(xxx);
+        return getDataTable(list);
     }
 
-    @GetMapping("/page")
-    @Operation(summary = "获取XXX分页")
-    @PreAuthorize("@ss.hasPermission('xxx:query')")
-    public CommonResult<PageResult<XxxRespVO>> getXxxPage(@Valid XxxPageReqVO pageReqVO) {
-        return success(xxxService.getXxxPage(pageReqVO));
+    @PreAuthorize("@ss.hasPermi('xxx:query')")
+    @GetMapping("/{xxxId}")
+    public AjaxResult getInfo(@PathVariable Long xxxId) {
+        return success(xxxService.selectXxxById(xxxId));
+    }
+
+    @PreAuthorize("@ss.hasPermi('xxx:add')")
+    @Log(title = "XXX", businessType = BusinessType.INSERT)
+    @PostMapping
+    public AjaxResult add(@Validated @RequestBody XxxDomain xxx) {
+        return toAjax(xxxService.insertXxx(xxx));
+    }
+
+    @PreAuthorize("@ss.hasPermi('xxx:edit')")
+    @Log(title = "XXX", businessType = BusinessType.UPDATE)
+    @PutMapping
+    public AjaxResult edit(@Validated @RequestBody XxxDomain xxx) {
+        return toAjax(xxxService.updateXxx(xxx));
+    }
+
+    @PreAuthorize("@ss.hasPermi('xxx:remove')")
+    @Log(title = "XXX", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{xxxIds}")
+    public AjaxResult remove(@PathVariable Long[] xxxIds) {
+        return toAjax(xxxService.deleteXxxByIds(xxxIds));
     }
 }
 ```
 
 ### 权限注解规范
-- 新增：`xxx:create`
-- 更新：`xxx:update`
-- 删除：`xxx:delete`
+- 列表：`xxx:list`
 - 查询：`xxx:query`
+- 新增：`xxx:add`
+- 修改：`xxx:edit`
+- 删除：`xxx:remove`
 - 导出：`xxx:export`
+- 导入：`xxx:import`
 
 ### 响应空值兜底
 ```java
@@ -269,12 +278,10 @@ public List<XxxRespVO> getList() {
 ### 文件列表
 | 类型 | 文件路径 | 说明 |
 |------|----------|------|
-| ReqVO | vo/xxx/XxxSaveReqVO.java | 保存请求 |
-| PageReqVO | vo/xxx/XxxPageReqVO.java | 分页请求 |
-| RespVO | vo/xxx/XxxRespVO.java | 响应数据 |
-| Service | service/XxxService.java | 接口 |
-| ServiceImpl | service/XxxServiceImpl.java | 实现 |
-| Controller | controller/admin/xxx/XxxController.java | 控制器 |
+| Domain | domain/XxxDomain.java | 实体类（同时作请求/响应） |
+| Service | service/ISysXxxService.java | 接口（I 前缀） |
+| ServiceImpl | service/impl/SysXxxServiceImpl.java | 实现类 |
+| Controller | controller/system/XxxController.java | 控制器（extends BaseController） |
 
 ## 完成后验证
 
@@ -314,7 +321,7 @@ public List<XxxRespVO> getList() {
 ### 安全相关
 - 权限注解必须与前端路由守卫同步（新增权限需同步到菜单）
 - 日志中禁止打印密码、Token 等敏感信息
-- 使用 `#{}` 而非 `${}` 防止 SQL 注入
+- 使用 `#{}` 而非 `${}` 防止 SQL 注入（`${params.dataScope}` 仅用于数据权限过滤）
 
 ### 性能相关
 - Service 层返回空集合而非 null，避免前端崩溃

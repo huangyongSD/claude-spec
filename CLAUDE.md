@@ -4,47 +4,48 @@
 
 ## 项目信息
 
-- **项目名称**：`yudao（芋道）`
-- **技术栈**：`SpringBoot 2.7.18 + MyBatis-Plus 3.5.15 + JDK8 / Vue2 2.7.14 + Element-UI 2.15.14`
-- **数据库**：`MySQL 8.0`
-- **中间件**：`Redis + Redisson（缓存/分布式锁）`
+- **项目名称**：`ruoyi（若依）`
+- **技术栈**：`SpringBoot 4.0.3 + MyBatis 4.0.1 + JDK17 / Vue2 2.6.12 + Element-UI 2.15.14`
+- **数据库**：`PostgreSQL`
+- **中间件**：`Redis + Lettuce（缓存）`
 
 | 命令 | 用途 |
 |------|------|
 | `mvn clean compile` | 后端全量编译 |
 | `mvn test` | 后端单元测试 |
-| `yarn build:prod` | 前端生产构建 |
-| `yarn lint` | 前端 Lint |
+| `npm run build:prod` | 前端生产构建 |
+| `npm run dev` | 前端开发服务 |
 
 ## 目录结构
 
 > 详细结构见 [.claude/knowledge/structure.md](.claude/knowledge/structure.md)
 
 ```
-yudao-boot-mini/
-├─ yudao-server/          主服务器（聚合模块）
-├─ yudao-framework/       框架层（禁止修改）
-├─ yudao-module-system/   系统功能模块
-├─ yudao-module-infra/    基础设施模块
-├─ yudao-dependencies/    BOM 依赖管理（禁止修改）
-├─ yudao-ui-admin/        前端管理后台
-├─ sql/                   数据库脚本
-└─ script/                部署脚本
+RuoYi-Vue-Postgresql/
+├─ ruoyi-admin/          聚合模块（启动入口+Controller）
+├─ ruoyi-framework/      框架层（禁止修改）
+├─ ruoyi-system/         系统功能模块（domain/mapper/service）
+├─ ruoyi-quartz/         定时任务
+├─ ruoyi-generator/      代码生成
+├─ ruoyi-common/         通用工具（BaseEntity/AjaxResult等）
+├─ ruoyi-ui/             前端管理后台
+├─ sql/                  数据库脚本（PostgreSQL）
+└─ doc/                  文档
 ```
 
 ## 修改导航
 
 | 场景 | 目标位置 |
 |------|----------|
-| 新增 API | `controller/**/*.java`（admin/app 子包） |
+| 新增 API | `controller/**/*.java`（system/monitor/tool/common 子包） |
 | 修改业务逻辑 | `service/**/*.java` |
-| 新增数据库表 | `sql/mysql/` 目录 |
-| 修改配置 | `yudao-server/.../application*.yaml` |
-| 新增前端页面 | `yudao-ui-admin/src/views/` + `src/router/` |
+| 新增数据库表 | `sql/` 目录 |
+| 修改配置 | `ruoyi-admin/.../application*.yml` |
+| 新增前端页面 | `ruoyi-ui/src/views/` + `src/router/` |
 
 ## 红线规则（5 条）
 
-1. **禁止修改 `yudao-framework/` 和 `yudao-dependencies/`** — 需通过 `/sds-plan` 并获确认
+1. **禁止修改 `ruoyi-framework/`** — 需通过 `/sds-plan` 并获确认
 2. **禁止硬编码密钥/SQL 拼接** — 见 [security.md](.claude/rules/security.md)
 3. **禁止 Controller 写业务逻辑** — 应放在 Service
 4. **禁止提交真实密码/IP** — 使用占位符，见 [敏感信息保护](#敏感信息保护)
@@ -90,7 +91,7 @@ yudao-boot-mini/
 
 | 文件 | 触发条件 |
 |------|----------|
-| security.md | `*.java` `*.sql` `*.vue` `*.js` `*.yaml` `*.xml` |
+| security.md | `*.java` `*.sql` `*.vue` `*.js` `*.yml` `*.xml` |
 | frontend.md | `*.vue` `*.js` `*.css` `*.scss` |
 | testing.md | `*Test*.java` `*.spec.js` `*.test.js` `test-cases.md` |
 | governance.md | `*.java` `*.vue` `*.js` `*.sql` `.claude/**/*.md` |

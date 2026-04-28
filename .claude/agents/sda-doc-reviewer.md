@@ -1,10 +1,10 @@
-***
+---
 
 name: sda-doc-reviewer
 description: Spec 文档评审 SDA，对 Spec 文件进行结构化评审，确保文档质量
 tools: Read, Grep, Glob, SearchCodebase
 
-***
+---
 
 # Sda-Doc-Reviewer SDA
 

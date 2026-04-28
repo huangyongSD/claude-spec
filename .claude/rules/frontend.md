@@ -9,7 +9,7 @@ globs: ["**/*.vue", "**/*.js", "**/*.css", "**/*.scss"]
 > - frontend.md = 前端编码规范（写 Vue/JS 时遵守）
 > - security.md = 安全编码规则（写任何代码时遵守）
 >
-> 本项目技术栈：Vue2 + Element-UI + Vuex + Webpack
+> 本项目技术栈：Vue2 2.6.12 + Element-UI 2.15.14 + Vuex 3.6.0 + Vue Router 3.4.9 + Webpack
 
 ## 🔴 立即执行（违反即阻断）
 
@@ -30,7 +30,7 @@ globs: ["**/*.vue", "**/*.js", "**/*.css", "**/*.scss"]
 
 8. **一级菜单 path 必须以 `/` 开头** — 否则 Vue Router 无法识别为根路由，页面 404
 9. **菜单 component 路径与 src/views/ 文件对应** — `component: 'business/meeting-room/index'` 对应 `src/views/business/meeting-room/index.vue`
-10. **操作按钮根据权限显隐** — 使用 `v-hasPermi="['xxx:create']"` 指令（芋道项目自定义指令，位于 `src/directive/permission/hasPermi.js`）
+10. **操作按钮根据权限显隐** — 使用 `v-hasPermi="['xxx:add']"` 指令（若依项目自定义指令，位于 `src/directive/permission/hasPermi.js`）
 
 ## 🟡 新代码执行
 

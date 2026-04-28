@@ -83,11 +83,11 @@ tools: Read, Bash, Glob, Grep, SearchCodebase
 #### SpringBoot 启动错误
 | 错误类型 | 典型信息 | 诊断要点 |
 |----------|----------|----------|
-| Bean 注入失败 | NoSuchBeanDefinitionException | 检查 @ComponentScan、@MapperScan |
-| 端口占用 | Port already in use | 检查端口占用进程 |
+| Bean 注入失败 | NoSuchBeanDefinitionException | 检查 @ComponentScan、@MapperScan("com.ruoyi.**.mapper") |
+| 端口占用 | Port already in use | 检查 8080 端口占用进程 |
 | 配置缺失 | Could not resolve placeholder | 检查 application.yml 配置 |
-| 数据库连接 | Connection refused | 检查数据库服务、连接配置 |
-| 中间件连接 | Redis/ActiveMQ/Kafka 连接失败 | 检查中间件服务状态、配置 |
+| 数据库连接 | Connection refused | 检查 PostgreSQL 服务、连接配置 |
+| 中间件连接 | Redis/Lettuce 连接失败 | 检查 Redis 服务状态、配置 |
 
 #### 前端构建错误
 | 错误类型 | 典型信息 | 诊断要点 |
@@ -113,7 +113,7 @@ tools: Read, Bash, Glob, Grep, SearchCodebase
 | 数据库错误 | SQL syntax error | 检查 SQL 语法、数据库方言 |
 | Mapper 错误 | Invalid bound statement | 检查 XML 映射、命名空间 |
 | 事务回滚 | Transaction rolled back | 检查事务配置、异常处理 |
-| 数据库迁移 | MySQL → PostgreSQL 语法差异 | 检查 SQL 兼容性、方言配置 |
+| 数据库迁移 | MySQL → PostgreSQL 语法差异（本项目为 PostgreSQL） | 检查 SQL 兼容性、方言配置（pagehelper.helperDialect=postgresql） |
 
 ### 3. CI/CD 错误
 

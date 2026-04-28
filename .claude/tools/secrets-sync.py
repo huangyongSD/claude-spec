@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Secrets sync tool.
+Secrets sync tool (PostgreSQL + RuoYi).
 
 Reads database and Redis connection info from application YAML files
 and writes it to .claude/tools/secrets.json.
@@ -13,15 +13,6 @@ import argparse
 import json
 import os
 import re
-
-
-def deep_merge(base, override):
-    """Merge override dict into base dict recursively."""
-    for key, value in override.items():
-        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            deep_merge(base[key], value)
-        else:
-            base[key] = value
 import sys
 
 try:
@@ -35,12 +26,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 SECRETS_PATH = os.path.join(SCRIPT_DIR, "secrets.json")
 
-# JDBC URL pattern: jdbc:mysql://host:port/database?params
+# JDBC URL pattern: jdbc:postgresql://host:port/database?params
 JDBC_PATTERN = re.compile(
-    r'jdbc:mysql://([^:]+):(\d+)/([^?]+)(\?.*)?'
+    r'jdbc:postgresql://([^:]+):(\d+)/([^?]+)(\?.*)?'
 )
 
-# Placeholder key mapping: real value key -> placeholder string
+# Placeholder key mapping
 PLACEHOLDER_MAP = {
     "db_master_url": "{{DB_MASTER_URL}}",
     "db_master_host": "{{DB_MASTER_HOST}}",
@@ -57,15 +48,21 @@ PLACEHOLDER_MAP = {
     "redis_host": "{{REDIS_HOST}}",
     "redis_port": "{{REDIS_PORT}}",
     "redis_password": "{{REDIS_PASSWORD}}",
-    "rabbit_host": "{{RABBIT_HOST}}",
-    "rabbit_port": "{{RABBIT_PORT}}",
-    "rabbit_user": "{{RABBIT_USER}}",
-    "rabbit_password": "{{RABBIT_PASSWORD}}",
+    "token_secret": "{{TOKEN_SECRET}}",
 }
 
 
+def deep_merge(base, override):
+    """Merge override dict into base dict recursively."""
+    for key, value in override.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            deep_merge(base[key], value)
+        else:
+            base[key] = value
+
+
 def parse_jdbc_url(url):
-    """Parse a JDBC URL to extract host, port, and database name."""
+    """Parse a PostgreSQL JDBC URL to extract host, port, and database name."""
     match = JDBC_PATTERN.match(url)
     if not match:
         return None
@@ -90,22 +87,20 @@ def deep_get(data, path, default=None):
 
 def read_application_yaml(profile):
     """Read the application YAML file for the given profile."""
-    # Try multiple possible locations
     possible_paths = [
-        os.path.join(PROJECT_ROOT, "yudao-boot-mini", "yudao-server",
-                      "src", "main", "resources", "application-" + profile + ".yaml"),
-        os.path.join(PROJECT_ROOT, "yudao-boot-mini", "yudao-server",
+        os.path.join(PROJECT_ROOT, "RuoYi-Vue-Postgresql", "ruoyi-admin",
                       "src", "main", "resources", "application-" + profile + ".yml"),
-        os.path.join(PROJECT_ROOT, "yudao-server",
+        os.path.join(PROJECT_ROOT, "RuoYi-Vue-Postgresql", "ruoyi-admin",
                       "src", "main", "resources", "application-" + profile + ".yaml"),
-        os.path.join(PROJECT_ROOT, "yudao-server",
+        os.path.join(PROJECT_ROOT, "ruoyi-admin",
                       "src", "main", "resources", "application-" + profile + ".yml"),
+        os.path.join(PROJECT_ROOT, "ruoyi-admin",
+                      "src", "main", "resources", "application-" + profile + ".yaml"),
     ]
 
     for path in possible_paths:
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
-                # Spring YAML uses --- as document separator; merge all docs
                 docs = list(yaml.safe_load_all(f))
                 merged = {}
                 for doc in docs:
@@ -113,7 +108,7 @@ def read_application_yaml(profile):
                         deep_merge(merged, doc)
                 return merged, path
 
-    print("ERROR: Could not find application-" + profile + ".yaml/.yml")
+    print("ERROR: Could not find application-" + profile + ".yml/.yaml")
     print("Searched paths:")
     for p in possible_paths:
         print("  " + p)
@@ -123,44 +118,36 @@ def read_application_yaml(profile):
 def extract_db_config(data, prefix):
     """Extract database connection info from YAML data.
 
-    prefix is 'master' or 'slave'.
-    The YAML structure uses spring.datasource.dynamic.datasource.{prefix}.
+    For RuoYi, the YAML structure uses spring.datasource.druid.{prefix}.
     """
-    ds_prefix = "spring.datasource.dynamic.datasource." + prefix
+    # RuoYi structure: spring.datasource.druid.{prefix}.url/username/password
+    ds_prefix = "spring.datasource.druid." + prefix
 
     url = deep_get(data, ds_prefix + ".url")
     username = deep_get(data, ds_prefix + ".username")
     password = deep_get(data, ds_prefix + ".password")
 
     if not url:
-        # Try alternate structure
+        # Try alternate structures
         url = deep_get(data, "spring.datasource." + prefix + ".url")
         username = deep_get(data, "spring.datasource." + prefix + ".username")
         password = deep_get(data, "spring.datasource." + prefix + ".password")
 
     if not url:
-        # Try single datasource (no dynamic)
+        # Try single datasource (no prefix)
         url = deep_get(data, "spring.datasource.url")
         username = deep_get(data, "spring.datasource.username")
         password = deep_get(data, "spring.datasource.password")
-        if url and prefix == "master":
-            parsed = parse_jdbc_url(url)
-            result = {
-                "db_" + prefix + "_url": url,
-                "db_" + prefix + "_host": parsed["host"] if parsed else "",
-                "db_" + prefix + "_port": parsed["port"] if parsed else 3306,
-                "db_" + prefix + "_name": parsed["database"] if parsed else "",
-                "db_" + prefix + "_user": username or "",
-                "db_" + prefix + "_password": str(password) if password else "",
-            }
-            return result
+
+    if not url:
         return None
 
     parsed = parse_jdbc_url(url)
+    default_port = 5432  # PostgreSQL default
     result = {
         "db_" + prefix + "_url": url,
         "db_" + prefix + "_host": parsed["host"] if parsed else "",
-        "db_" + prefix + "_port": parsed["port"] if parsed else 3306,
+        "db_" + prefix + "_port": parsed["port"] if parsed else default_port,
         "db_" + prefix + "_name": parsed["database"] if parsed else "",
         "db_" + prefix + "_user": username or "",
         "db_" + prefix + "_password": str(password) if password else "",
@@ -170,10 +157,9 @@ def extract_db_config(data, prefix):
 
 def extract_redis_config(data):
     """Extract Redis connection info from YAML data."""
-    redis_prefix = "spring.redis"
-    # Try spring.data.redis (Spring Boot 2.x+)
-    if deep_get(data, "spring.data.redis.host"):
-        redis_prefix = "spring.data.redis"
+    redis_prefix = "spring.data.redis"
+    if not deep_get(data, redis_prefix + ".host"):
+        redis_prefix = "spring.redis"
 
     host = deep_get(data, redis_prefix + ".host", "127.0.0.1")
     port = deep_get(data, redis_prefix + ".port", 6379)
@@ -186,62 +172,43 @@ def extract_redis_config(data):
     }
 
 
-def extract_rabbit_config(data):
-    """Extract RabbitMQ connection info from YAML data."""
-    rabbit_prefix = "spring.rabbitmq"
-
-    host = deep_get(data, rabbit_prefix + ".host")
-    port = deep_get(data, rabbit_prefix + ".port")
-    username = deep_get(data, rabbit_prefix + ".username")
-    password = deep_get(data, rabbit_prefix + ".password")
-
-    if not host:
-        return None
-
-    return {
-        "rabbit_host": host,
-        "rabbit_port": port or 5672,
-        "rabbit_user": username or "guest",
-        "rabbit_password": password or "guest",
-    }
+def extract_token_config(data):
+    """Extract token secret from YAML data."""
+    secret = deep_get(data, "token.secret", "")
+    if secret:
+        return {"token_secret": secret}
+    return None
 
 
 def build_secrets(data):
     """Build the secrets.json structure from YAML data."""
     real_values = {}
 
-    # Master database
     master_config = extract_db_config(data, "master")
     if master_config:
         real_values.update(master_config)
 
-    # Slave database
     slave_config = extract_db_config(data, "slave")
     if slave_config:
         real_values.update(slave_config)
 
-    # Redis
     redis_config = extract_redis_config(data)
     if redis_config:
         real_values.update(redis_config)
 
-    # RabbitMQ
-    rabbit_config = extract_rabbit_config(data)
-    if rabbit_config:
-        real_values.update(rabbit_config)
+    token_config = extract_token_config(data)
+    if token_config:
+        real_values.update(token_config)
 
-    # Build placeholders mapping (real_value -> placeholder_key)
     placeholders = {}
     for key, value in real_values.items():
         if key in PLACEHOLDER_MAP:
             placeholders[PLACEHOLDER_MAP[key]] = str(value)
 
-    # Also build reverse: real value -> placeholder key for scan-configs
     reverse_map = {}
     for key, value in real_values.items():
         if key in PLACEHOLDER_MAP:
-            placeholder_key = PLACEHOLDER_MAP[key]
-            reverse_map[str(value)] = placeholder_key
+            reverse_map[str(value)] = PLACEHOLDER_MAP[key]
 
     return {
         "real_values": real_values,
@@ -252,7 +219,6 @@ def build_secrets(data):
 
 def write_secrets(secrets):
     """Write secrets to secrets.json."""
-    # Don't write reverse_map to file (it's only used internally for scanning)
     output = {
         "real_values": secrets["real_values"],
         "placeholders": secrets["placeholders"],
@@ -267,12 +233,10 @@ def scan_and_replace(secrets):
     claude_dir = os.path.join(PROJECT_ROOT, ".claude")
     reverse_map = secrets.get("reverse_map", {})
 
-    # Build reverse_map from placeholders if not present
     if not reverse_map:
         for placeholder_key, real_value in secrets["placeholders"].items():
             reverse_map[real_value] = placeholder_key
 
-    # Scan patterns for file matching
     patterns = ["*.md", "*.json", "*.yaml", "*.yml"]
     scan_dir = claude_dir
 
@@ -281,20 +245,15 @@ def scan_and_replace(secrets):
     replacements_made = 0
 
     for root, dirs, files in os.walk(scan_dir):
-        # Skip tools directory (secrets.json lives there)
         if "tools" in dirs:
             dirs.remove("tools")
-        # Skip specs directory (user-generated content)
-        # Skip templates directory (template content)
 
         for filename in files:
-            # Check if file matches our patterns
             ext = os.path.splitext(filename)[1]
             if ext not in [".md", ".json", ".yaml", ".yml"]:
                 continue
 
             filepath = os.path.join(root, filename)
-            # Skip secrets.json itself
             if filepath == SECRETS_PATH:
                 continue
 
@@ -310,10 +269,8 @@ def scan_and_replace(secrets):
             for real_value, placeholder_key in reverse_map.items():
                 if not real_value or real_value.strip() == "":
                     continue
-                # Don't replace if the placeholder is already there
                 if placeholder_key in new_content:
                     continue
-                # Only replace exact matches to avoid partial replacements
                 count = new_content.count(real_value)
                 if count > 0:
                     new_content = new_content.replace(real_value, placeholder_key)
@@ -332,39 +289,33 @@ def scan_and_replace(secrets):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Sync secrets from application YAML to secrets.json. "
+        description="Sync secrets from application YAML to secrets.json (PostgreSQL). "
                     "Optionally scan .claude/ config files and replace real values with placeholders."
     )
-    parser.add_argument("--profile", choices=["local", "dev"], default="local",
-                        help="Application profile to read (default: local)")
+    parser.add_argument("--profile", default="druid",
+                        help="Application profile to read (default: druid)")
     parser.add_argument("--scan-configs", action="store_true",
                         help="Scan .claude/ config files and replace real sensitive values with placeholders")
 
     args = parser.parse_args()
 
-    # Read application YAML
-    print("Reading application-" + args.profile + ".yaml...")
+    print("Reading application-" + args.profile + ".yml...")
     data, yaml_path = read_application_yaml(args.profile)
     print("  Found: " + yaml_path)
 
-    # Extract secrets
     secrets = build_secrets(data)
 
-    # Print extracted info (password hidden)
     print("Extracted configuration:")
     for key, value in secrets["real_values"].items():
-        if "password" in key:
+        if "password" in key or "secret" in key:
             print("  " + key + ": ****")
         else:
             print("  " + key + ": " + str(value))
 
-    # Write secrets.json
     write_secrets(secrets)
 
-    # Optionally scan and replace
     if args.scan_configs:
         print("\nScanning .claude/ config files for real sensitive values...")
-        # Re-build reverse_map for scanning (read from written file)
         scan_secrets = {}
         scan_secrets["real_values"] = secrets["real_values"]
         scan_secrets["placeholders"] = secrets["placeholders"]

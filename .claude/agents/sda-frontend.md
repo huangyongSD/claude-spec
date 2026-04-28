@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 # Frontend SDA
 
-你是前端实现专家，负责根据设计文档实现 Vue2 + Element-UI 页面和组件，遵循安全与性能规范。
+你是前端实现专家，负责根据设计文档实现 Vue2 2.6.12 + Element-UI 2.15.14 页面和组件，遵循安全与性能规范。
 
 ## 设计原则
 
@@ -57,7 +57,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 ## 设计前必读
 
 1. design.md 第 11 节"文件产出清单" — 获取前序 SDA（sda-backend）的预期产出路径，用 Glob/Read 发现实际 Controller 文件和 API 端点
-2. `CLAUDE.md` 项目信息区 — 技术栈约束（Vue2 + Element-UI）
+2. `CLAUDE.md` 项目信息区 — 技术栈约束（Vue2 2.6.12 + Element-UI 2.15.14 + Vuex 3.6.0）
 3. `.claude/rules/frontend.md` — 前端编码底线
 4. 现有同类页面 — 代码风格、组件使用方式
 5. 现有 API 文件 — API 定义风格
@@ -166,48 +166,48 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ### API 定义规范
 ```javascript
-// api/xxx/index.js
+// api/xxx.js（若依前端 API 文件为单文件，非子目录）
 import request from '@/utils/request'
 
-// 获取分页
-export function getXxxPage(params) {
+// 查询列表
+export function listXxx(query) {
   return request({
-    url: '/xxx/page',
+    url: '/xxx/list',
     method: 'get',
-    params
+    params: query
   })
 }
 
-// 获取详情
-export function getXxx(id) {
+// 查询详细
+export function getXxx(xxxId) {
   return request({
-    url: '/xxx/get?id=' + id,
+    url: '/xxx/' + xxxId,
     method: 'get'
   })
 }
 
-// 创建
-export function createXxx(data) {
+// 新增
+export function addXxx(data) {
   return request({
-    url: '/xxx/create',
+    url: '/xxx',
     method: 'post',
-    data
+    data: data
   })
 }
 
-// 更新
+// 修改
 export function updateXxx(data) {
   return request({
-    url: '/xxx/update',
+    url: '/xxx',
     method: 'put',
-    data
+    data: data
   })
 }
 
 // 删除
-export function deleteXxx(id) {
+export function delXxx(xxxId) {
   return request({
-    url: '/xxx/delete?id=' + id,
+    url: '/xxx/' + xxxId,
     method: 'delete'
   })
 }
@@ -216,30 +216,28 @@ export function deleteXxx(id) {
 ### 列表页面规范
 ```vue
 <template>
-  <ContentWrap>
-    <!-- 搜索 -->
-    <el-form :model="queryParams" ref="queryFormRef" :inline="true">
-      <!-- 搜索表单项 -->
-    </el-form>
-    <!-- 操作按钮 -->
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" @click="handleCreate">新增</el-button>
-      </el-col>
-    </el-row>
-    <!-- 表格 -->
-    <el-table v-loading="loading" :data="list ?? []">
-      <!-- 表格列 -->
-    </el-table>
-    <!-- 分页 -->
-    <Pagination v-show="total > 0" :total="total" :page.sync="queryParams.pageNo" :limit.sync="queryParams.pageSize" @pagination="getList" />
-  </ContentWrap>
+  <!-- 搜索 -->
+  <el-form :model="queryParams" ref="queryForm" :inline="true" v-show="showSearch">
+    <!-- 搜索表单项 -->
+  </el-form>
+  <!-- 操作按钮 -->
+  <el-row :gutter="10" class="mb8">
+    <el-col :span="1.5">
+      <el-button type="primary" icon="el-icon-plus" @click="handleAdd" v-hasPermi="['xxx:add']">新增</el-button>
+    </el-col>
+  </el-row>
+  <!-- 表格 -->
+  <el-table v-loading="loading" :data="list ?? []">
+    <!-- 表格列 -->
+  </el-table>
+  <!-- 分页 -->
+  <pagination v-show="total > 0" :total="total" :page.sync="queryParams.pageNum" :limit.sync="queryParams.pageSize" @pagination="getList" />
   <!-- 表单弹窗 -->
   <XxxForm ref="formRef" @success="getList" />
 </template>
 
 <script>
-import { getXxxPage } from '@/api/xxx'
+import { listXxx } from '@/api/system/xxx'
 
 export default {
   name: 'XxxIndex',
@@ -248,24 +246,23 @@ export default {
       loading: true,
       list: [],
       total: 0,
-      queryParams: { pageNo: 1, pageSize: 10 }
+      showSearch: true,
+      queryParams: { pageNum: 1, pageSize: 10 }
     }
   },
   created() {
     this.getList()
   },
   methods: {
-    async getList() {
+    getList() {
       this.loading = true
-      try {
-        const data = await getXxxPage(this.queryParams)
-        this.list = data?.list ?? []
-        this.total = data?.total ?? 0
-      } finally {
+      listXxx(this.queryParams).then(response => {
+        this.list = response.rows ?? []
+        this.total = response.total ?? 0
         this.loading = false
-      }
+      })
     },
-    handleCreate() {
+    handleAdd() {
       this.$refs.formRef.open()
     }
   }
@@ -275,10 +272,16 @@ export default {
 
 ### 空值守卫规范（必须）
 ```javascript
-// API 返回值一律加空值守卫
-const data = await getXxxPage(queryParams)
-this.list = data?.list ?? []        // 数组兜底
-this.total = data?.total ?? 0       // 数值兜底
+// 若依 AjaxResult 响应模式：response.rows + response.total
+listXxx(this.queryParams).then(response => {
+  this.list = response.rows ?? []         // 数组兜底
+  this.total = response.total ?? 0        // 数值兜底
+})
+
+// 单条数据
+getXxx(id).then(response => {
+  this.form = response.data ?? {}
+})
 
 // 链式访问加可选链
 row.user?.name ?? '未知'             // 对象兜底
@@ -287,9 +290,10 @@ row.user?.name ?? '未知'             // 对象兜底
 
 ### 权限控制规范
 ```vue
-<el-button v-hasPermi="['xxx:create']" type="primary">新增</el-button>
-<el-button v-hasPermi="['xxx:update']" link type="primary">编辑</el-button>
-<el-button v-hasPermi="['xxx:delete']" link type="danger">删除</el-button>
+<el-button v-hasPermi="['xxx:add']" type="primary">新增</el-button>
+<el-button v-hasPermi="['xxx:edit']" link type="primary">修改</el-button>
+<el-button v-hasPermi="['xxx:remove']" link type="danger">删除</el-button>
+<el-button v-hasPermi="['xxx:export']" type="warning">导出</el-button>
 ```
 
 ## 输出格式
@@ -306,7 +310,7 @@ row.user?.name ?? '未知'             // 对象兜底
 完成所有代码实现后，必须执行以下验证步骤：
 
 ### 编译验证
-1. **编译检查**：运行 `yarn build` 验证前端代码可编译
+1. **编译检查**：运行 `npm run build:prod` 验证前端代码可编译
 2. **如编译失败**：调用 sda-build-error-resolver 诊断并修复错误，修复后重新编译验证
 3. **验证通过后**：再继续下一个阶段
 
@@ -340,9 +344,9 @@ row.user?.name ?? '未知'             // 对象兜底
 
 | 类型 | 文件路径 | 说明 |
 |------|----------|------|
-| API | src/api/xxx/index.js | API 定义 |
-| 列表页 | src/views/xxx/index.vue | 列表页面 |
-| 表单弹窗 | src/views/xxx/XxxForm.vue | 表单组件 |
+| API | src/api/system/xxx.js | API 定义 |
+| 列表页 | src/views/system/xxx/index.vue | 列表页面 |
+| 表单弹窗 | src/views/system/xxx/XxxForm.vue | 表单组件 |
 | 路由配置 | src/router/modules/xxx.js | 路由配置（如需） |
 
 ## 写文件规则
@@ -371,10 +375,16 @@ row.user?.name ?? '未知'             // 对象兜底
 - 表单校验提示清晰具体
 
 ### 规范相关
-- 参考 Element UI 2.15 组件文档
-- 本项目为 Vue2 + Element-UI + JavaScript，不使用 TypeScript 或 Pinia
-- 状态管理使用 Vuex 3.x
+- 参考 Element UI 2.15.14 组件文档
+- 本项目为 Vue2 2.6.12 + Element-UI 2.15.14 + JavaScript，不使用 TypeScript 或 Pinia
+- 状态管理使用 Vuex 3.6.0
 - API 文件为 .js，使用函数式 export（非对象模式）
+- 若依前端 API 文件路径：`src/api/system/xxx.js`（非子目录 index.js）
+- 若依分页参数：`pageNum` / `pageSize`（非 pageNo）
+- 若依列表响应：`response.rows` + `response.total`（非 response.data.list）
+- 若依弹窗方法：`this.$modal.msgSuccess/confirm/msgError`
+- 若依分页组件：`<pagination>`（全局注册，非 ContentWrap 包裹）
+- 权限指令使用 `v-hasPermi`，后缀为 add/edit/remove/list/query/export/import
 - 组件命名使用 PascalCase
 - 变量命名使用 camelCase
 

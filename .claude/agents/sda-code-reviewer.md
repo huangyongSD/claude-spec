@@ -90,6 +90,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 #### SQL 注入防护
 - [ ] 是否使用参数绑定（`#{}`）而非字符串拼接（`${}`）
+- [ ] `${}` 仅用于数据权限过滤（`${params.dataScope}`），禁止用于用户输入
 - [ ] 动态 SQL 是否使用安全标签（`<if>`、`<where>`）
 - [ ] 用户输入是否经过校验
 
@@ -105,7 +106,8 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 - [ ] 配置文件中是否硬编码密钥
 
 #### 权限控制
-- [ ] 所有写接口是否有权限注解
+- [ ] 所有写接口是否有权限注解（`@PreAuthorize("@ss.hasPermi('xxx:action')")`)
+- [ ] 权限后缀是否使用若依标准（list/query/add/edit/remove/export/import）
 - [ ] 数据权限是否正确过滤
 - [ ] 越权访问是否防护
 - [ ] 前后端权限是否一致

@@ -18,7 +18,7 @@ if (-not $f) { exit 0 }
 # --- 1. Code file formatting reminder ---
 $FILE_EXTENSIONS = "(java|xml|vue|js|yaml|scss|sql)$"
 if ($f -match $FILE_EXTENSIONS) {
-  Write-Host ("[Hook] " + $j.tool_name + " file: " + $f + " - Format: backend 'mvn spotless:apply', frontend 'yarn lint'")
+  Write-Host ("[Hook] " + $j.tool_name + " file: " + $f + " - Verify: backend 'mvn clean compile', frontend 'npm run build:prod'")
 }
 
 # --- 2. Config file placeholder detection ---

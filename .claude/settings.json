@@ -2,7 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(mvn **)",
-      "Bash(yarn **)",
+      "Bash(npm **)",
       "Bash(git **)",
       "Bash(node **)",
       "Bash(python .claude/tools/db-query.py **)",

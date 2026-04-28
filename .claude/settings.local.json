@@ -1,5 +1,9 @@
 {
   "permissions": {
-    "allow": []
+    "allow": [
+      "Bash(find D:/code/claude-spec/RuoYi-Vue-Postgresql -maxdepth 3 -type d ! -path */node_modules/* ! -path */.git/* ! -path */target/* ! -path */.idea/* ! -path */dist/*)",
+      "Bash(dir:*)",
+      "Bash(pip install *)"
+    ]
   }
 }

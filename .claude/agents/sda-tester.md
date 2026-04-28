@@ -89,8 +89,8 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 3. **执行测试代码**
    - 运行后端单元测试：`mvn test`
-   - 运行前端单元测试：`yarn test:unit`
-   - 运行 E2E 测试：`yarn test:e2e`
+   - 运行前端单元测试：暂无脚本
+   - 运行 E2E 测试：`npx playwright test`（当前未配置）
    - 收集测试执行结果
 
 4. **输出测试结果**
@@ -190,29 +190,29 @@ expect(errors.filter(e => !isKnownNoise(e))).toEqual([])
 ### 后端单元测试模板
 ```java
 @SpringBootTest
-class XxxServiceTest {
+class SysXxxServiceTest {
 
-    @Resource
-    private XxxService xxxService;
+    @Autowired
+    private ISysXxxService xxxService;
 
     @Test
-    @DisplayName("创建XXX - 正常场景")
-    void createXxx_success() {
-        XxxSaveReqVO reqVO = new XxxSaveReqVO();
-        reqVO.setName("测试名称");
+    @DisplayName("新增XXX - 正常场景")
+    void insertXxx_success() {
+        XxxDomain xxx = new XxxDomain();
+        xxx.setName("测试名称");
 
-        Long id = xxxService.createXxx(reqVO);
+        int result = xxxService.insertXxx(xxx);
 
-        assertNotNull(id);
+        assertTrue(result > 0);
     }
 
     @Test
-    @DisplayName("创建XXX - 名称为空")
-    void createXxx_nameBlank() {
-        XxxSaveReqVO reqVO = new XxxSaveReqVO();
-        reqVO.setName("");
+    @DisplayName("新增XXX - 名称为空")
+    void insertXxx_nameBlank() {
+        XxxDomain xxx = new XxxDomain();
+        xxx.setName("");
 
-        assertThrows(ServiceException.class, () -> xxxService.createXxx(reqVO));
+        assertThrows(ServiceException.class, () -> xxxService.insertXxx(xxx));
     }
 }
 ```
@@ -222,7 +222,7 @@ class XxxServiceTest {
 describe('XxxIndex', () => {
   it('页面加载后应显示列表数据', async () => {
     const wrapper = mount(XxxIndex, {
-      stubs: { ContentWrap: true, Pagination: true }
+      stubs: { Pagination: true }
     })
 
     await wrapper.vm.$nextTick()

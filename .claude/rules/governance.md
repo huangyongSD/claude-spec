@@ -19,7 +19,7 @@ globs: ["**/*.java", "**/*.vue", "**/*.js", "**/*.sql", ".claude/**/*.md", ".cla
 | 序号 | 检查项 | 验证命令/方式 | 自动化 |
 |------|--------|--------------|--------|
 | 1 | 后端编译通过 | `mvn clean compile`（必须全量，非增量） | ✅ |
-| 2 | 前端构建通过 | `yarn install && yarn build:prod` | ✅ |
+| 2 | 前端构建通过 | `npm install && npm run build:prod` | ✅ |
 | 3 | 后端单元测试零失败 | `mvn test` | ✅ |
 | 4 | 无敏感信息泄露 | `python .claude/tools/secrets-sync.py --scan-configs` + Hook 层兜底 | ✅ |
 | 5 | 代码无 TODO/FIXME/placeholder 残留 | `grep -rE "TODO|FIXME|placeholder" src/`（排除规范文件自身） | ✅ |
@@ -168,7 +168,7 @@ sda-db → 评审 → sda-backend → 评审+编译 → sda-frontend → 评审+
 | 序号 | 检查项 | 验证方式 |
 |------|--------|---------|
 | 14 | 数据库迁移脚本可重复执行 | SQL 幂等性验证 + db-query.py 抽查 |
-| 15 | 服务可达性验证 | 后端 48080 + 前端 80 可达 |
+| 15 | 服务可达性验证 | 后端 8080 + 前端 80 可达 |
 
 ### Git 逐步达标
 
