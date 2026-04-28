@@ -57,7 +57,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 设计前必读
 
-1. `.claude/steer/foundation/tech.md` — 技术栈约束（字符集规范）
+1. `CLAUDE.md` 数据库规范节 — 技术栈约束（字符集规范）
 2. 现有 DO 类 — 命名规范、注解风格
 3. 现有 SQL 脚本 — 表结构风格、索引命名
 4. `.claude/rules/security.md` — 敏感数据处理规范
@@ -178,7 +178,7 @@ SELECT COUNT(*) FROM `table_name` WHERE `new_field` IS NULL;
    - 新建表名必须符合现有命名模式
 
 ### SQL 脚本规范
-> 字符集规范权威源见 `steer/foundation/tech.md`「数据库字符集规范」节，以下为 SQL 模板：
+> 字符集规范见 CLAUDE.md 数据库规范节，以下为 SQL 模板：
 ```sql
 SET NAMES utf8mb4;
 

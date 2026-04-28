@@ -1,9 +1,9 @@
 ---
-name: sdc-dbquery
+name: sds-dbquery
 description: 数据库只读查询工具，自动读取连接信息，支持 SELECT/SHOW/DESC 仅
 ---
 
-# /sdc-dbquery 命令
+# /sds-dbquery Skill
 
 ## 用途
 

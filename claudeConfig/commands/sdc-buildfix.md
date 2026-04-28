@@ -7,7 +7,7 @@ description: 构建和测试错误的自动诊断与修复
 
 ## 前置知识
 
-诊断前必须先查阅 `.claude/skills/troubleshooting.md` 中的常见问题解决方案，匹配已知错误模式。
+诊断前必须先查阅 `.claude/knowledge/troubleshooting.md` 中的常见问题解决方案，匹配已知错误模式。
 
 ## 诊断流程
 
@@ -39,7 +39,7 @@ description: 构建和测试错误的自动诊断与修复
 2. 一次只修一个问题 — 避免引入新问题
 3. 修完必须验证 — 运行测试确认通过
 4. 保留错误上下文 — Commit message 写明修复了什么
-5. **经验沉淀** — 新错误模式追加到 troubleshooting.md
+5. **经验沉淀** — 新错误模式追加到 troubleshooting.md（路径：.claude/knowledge/troubleshooting.md）
 
 ## 经验沉淀流程
 
@@ -47,7 +47,7 @@ description: 构建和测试错误的自动诊断与修复
 
 ### 判断是否值得记录
 满足以下任一条件则值得记录：
-- troubleshooting.md 中没有该错误类型的解决方案
+- .claude/knowledge/troubleshooting.md 中没有该错误类型的解决方案
 - 现有方案不完整或不适用
 - 发现了新的根因或更优解决方案
 
@@ -65,7 +65,7 @@ description: 构建和测试错误的自动诊断与修复
 ```
 
 ### 追加方式
-使用 Edit 工具追加到 `.claude/skills/troubleshooting.md` 对应分类末尾，不要重写整个文件。
+使用 Edit 工具追加到 `.claude/knowledge/troubleshooting.md` 对应分类末尾，不要重写整个文件。
 
 ## 输出格式
 

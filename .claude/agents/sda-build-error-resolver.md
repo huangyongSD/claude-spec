@@ -57,7 +57,7 @@ tools: Read, Bash, Glob, Grep, SearchCodebase
 
 ## 前置知识
 
-诊断前必须先查阅 `.claude/skills/troubleshooting.md` 中的常见问题解决方案，匹配已知错误模式。
+诊断前必须先查阅 `.claude/knowledge/troubleshooting.md` 中的常见问题解决方案，匹配已知错误模式。
 
 ## 诊断能力
 
@@ -138,7 +138,7 @@ tools: Read, Bash, Glob, Grep, SearchCodebase
    - 环境信息（JDK/Node 版本）
 
 2. **查知识库匹配**
-   - 读取 `.claude/skills/troubleshooting.md`
+   - 读取 `.claude/knowledge/troubleshooting.md`
    - 匹配已知错误模式
    - 如匹配成功，直接应用解决方案
 
@@ -190,10 +190,10 @@ tools: Read, Bash, Glob, Grep, SearchCodebase
 
 ## 经验沉淀流程
 
-修复成功后，将新错误模式沉淀到 `.claude/skills/troubleshooting.md` 知识库。
+修复成功后，将新错误模式沉淀到 `.claude/knowledge/troubleshooting.md` 知识库。
 
 ### 沉淀目标文件
-- **文件路径**：`.claude/skills/troubleshooting.md`
+- **文件路径**：`.claude/knowledge/troubleshooting.md`
 - **追加方式**：使用 Edit 工具追加到对应分类末尾，不要重写整个文件
 
 ### 判断是否值得记录
@@ -217,7 +217,7 @@ tools: Read, Bash, Glob, Grep, SearchCodebase
 ```
 
 ### 追加方式
-使用 Edit 工具追加到 `.claude/skills/troubleshooting.md` 对应分类末尾，不要重写整个文件。
+使用 Edit 工具追加到 `.claude/knowledge/troubleshooting.md` 对应分类末尾，不要重写整个文件。
 
 ## 输出格式
 

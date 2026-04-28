@@ -11,7 +11,7 @@ tools: Read, Bash, Glob, Grep
 
 ## 前置知识
 
-诊断前必须先查阅 `.claude/skills/troubleshooting.md` 中的常见问题解决方案，匹配已知错误模式。
+诊断前必须先查阅 `.claude/knowledge/troubleshooting.md` 中的常见问题解决方案，匹配已知错误模式。
 
 ## 诊断能力
 
@@ -69,4 +69,4 @@ tools: Read, Bash, Glob, Grep
 
 ## 排障经验积累
 
-遇到常见错误时，将解决方案记录到项目的 .claude/skills/troubleshooting.md，形成团队知识库。
+遇到常见错误时，将解决方案记录到项目的 .claude/knowledge/troubleshooting.md，形成团队知识库。

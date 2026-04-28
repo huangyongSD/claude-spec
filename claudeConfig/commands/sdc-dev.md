@@ -76,7 +76,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 ### 第四阶段：质量门禁验证
 
-运行质量门禁清单（见 `.claude/steer/domain/quality-gate.md`），全部通过才交付。
+运行质量门禁清单（见 `.claude/rules/governance.md`），全部通过才交付。
 
 ## SDA 配置索引
 
@@ -336,7 +336,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 3. 检查 TODO/FIXME/占位符残留
 4. 确认无占位符残留后提交 Git
 
-提交信息遵循 .claude/rules/git.md 的 Commit 规范：
+提交信息遵循 .claude/rules/governance.md 的 Git Commit 规范：
 type(scope): subject
 
 Body 包含本次变更的文件说明和 review 重点。

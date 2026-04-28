@@ -1,8 +1,5 @@
 ---
-name: troubleshooting
-description: 常见构建与测试问题的排查与修复方法
-type: skill
-updated: 2026-04-22
+description: 常见构建与测试问题的排查与修复方法（按需读取，遇到编译/运行/部署报错时查阅）
 ---
 
 # 排障知识库
@@ -164,7 +161,7 @@ updated: 2026-04-22
 > **注**：本项目使用 Vue2 + webpack，不适用此排障方案。
 
 ### Vue Router 路由守卫死循环
-问题：页面不断重定向到同一路由
+问题：页面不断重定向到同一路径
 解决：检查 next() 是否在守卫中被调用且只调用一次；确认白名单路由判断逻辑正确；避免在 beforeEach 中对白名单路由再做 redirect
 
 ### ESLint + Prettier 冲突
@@ -398,7 +395,7 @@ mvn clean install -DskipTests
 
 ## Docker MySQL 字符集问题
 
-> 字符集规范详见 `steer/foundation/tech.md`，以下为 Docker 环境排障场景的具体操作步骤。
+> 字符集规范见 CLAUDE.md 数据库规范节，以下为 Docker 环境排障场景的具体操作步骤。
 
 ### 客户端字符集导致中文乱码
 问题：通过 `docker exec mysql` 执行含中文的 SQL，数据库存储为乱码

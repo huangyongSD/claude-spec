@@ -1,9 +1,9 @@
 ---
-name: sdc-buildfix
+name: sds-buildfix
 description: 构建和测试错误的自动诊断与修复（调用 sda-build-error-resolver）
 ---
 
-# /sdc-buildfix 命令规范
+# /sds-buildfix Skill 规范
 
 ## 触发场景
 
@@ -15,7 +15,7 @@ description: 构建和测试错误的自动诊断与修复（调用 sda-build-er
 
 ## 执行方式
 
-`/sdc-buildfix` 是对 `sda-build-error-resolver` agent 的包装命令。
+`/sds-buildfix` 是对 `sda-build-error-resolver` agent 的包装 Skill。
 
 执行时，主 CC 直接调用 `sda-build-error-resolver` agent 进行诊断和修复。
 
@@ -38,7 +38,7 @@ description: 构建和测试错误的自动诊断与修复（调用 sda-build-er
 
 ### 详细步骤
 
-1. **主 CC 接收 `/sdc-buildfix` 命令**
+1. **主 CC 接收 `/sds-buildfix` 命令**
 2. **收集错误上下文**
    - 失败的命令（如 `mvn clean compile`）
    - 完整错误输出（重新执行命令获取）
@@ -50,7 +50,7 @@ description: 构建和测试错误的自动诊断与修复（调用 sda-build-er
    - 执行相同命令确认修复成功
    - 如失败，重复步骤 3（最多 3 轮）
 5. **经验沉淀**
-   - 由 `sda-build-error-resolver` 自动追加到 `.claude/skills/troubleshooting.md`
+   - 由 `sda-build-error-resolver` 自动追加到 `.claude/knowledge/troubleshooting.md`
 
 ## 多错误处理
 
@@ -110,5 +110,5 @@ fix(module): [简短描述]
 
 - 修复时遵循最小改动原则，避免引入新问题
 - 一次只修一个问题，修完验证后再修下一个
-- 安全问题不在此命令范围内，需人工确认
+- 安全问题不在此 Skill 范围内，需人工确认
 - 如 3 轮修复仍失败，输出当前状态交由用户决定

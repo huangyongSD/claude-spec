@@ -56,10 +56,11 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 设计前必读
 
-1. `.claude/steer/foundation/tech.md` — 技术栈约束（Vue2 + Element-UI）
-2. `.claude/rules/frontend.md` — 前端编码底线
-3. 现有同类页面 — 代码风格、组件使用方式
-4. 现有 API 文件 — API 定义风格
+1. design.md 第 11 节"文件产出清单" — 获取前序 SDA（sda-backend）的预期产出路径，用 Glob/Read 发现实际 Controller 文件和 API 端点
+2. `CLAUDE.md` 项目信息区 — 技术栈约束（Vue2 + Element-UI）
+3. `.claude/rules/frontend.md` — 前端编码底线
+4. 现有同类页面 — 代码风格、组件使用方式
+5. 现有 API 文件 — API 定义风格
 
 ## 核心能力
 

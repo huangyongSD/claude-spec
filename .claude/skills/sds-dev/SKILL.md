@@ -1,9 +1,9 @@
 ---
-name: sdc-dev
+name: sds-dev
 description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-tester→reviewer 串行调度，每个阶段含多轮评审
 ---
 
-# /sdc-dev 命令规范
+# /sds-dev Skill 规范
 
 ## 用途
 
@@ -11,25 +11,25 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 ## 触发场景
 
-- `/sdc-spec` 完成后，用户确认"开始实现"
-- 用户手动调用 `/sdc-dev` 直接启动开发（需已有 Spec 文件）
+- `/sds-spec` 完成后，用户确认"开始实现"
+- 用户手动调用 `/sds-dev` 直接启动开发（需已有 Spec 文件）
 
 ## 前置条件
 
 - Spec 文件已创建并通过评审（`.claude/specs/<feature>/` 下四个文件）
-- 项目环境可编译（后端 `mvn compile`、前端 `yarn build`）
+- 项目环境可编译（后端 `mvn compile`、前端 `yarn build:prod`）
 
 ## 执行模式
 
-> 工作流详细规范见 `.claude/steer/domain/workflow.md`
+> 工作流编排规范见本文件后续章节
 
-**CC 模式（Claude Code）**：可并行的阶段使用并行。DB+Backend 可合并为一个调度单元同时执行；前后端编译验证可并行运行。
-**Trea 模式（类似 Cursor/Trae）**：严格串行。每步一个 prompt，prompt 必须自包含（包含需求路径、设计路径、文件清单）。不可跳步。
+**CC 模式（Claude Code）**：所有阶段严格串行。每个 SDA 需要前序 SDA 的产出文件存在于磁盘才能进行前置发现，不可并行。
+**Trea 模式（类似 Cursor/Trae）**：严格串行。每步一个 prompt，prompt 必须自包含（包含需求路径、设计路径）。不可跳步。
 
 ## 概念说明
 
 > **调度粒度 vs 任务粒度**：
-> - **本文档（sdc-dev.md）** 定义的是 **调度阶段（Phase）**，每个阶段对应一个 SDA 执行单元
+> - **本文档（sds-dev.md）** 定义的是 **调度阶段（Phase）**，每个阶段对应一个 SDA 执行单元
 > - **tasks.md** 定义的是 **具体任务（Task）**，是调度阶段的细粒度拆分
 > - 一个 Phase 可能包含多个 Task，例如"数据库阶段"包含 T-001~T-003
 
@@ -43,7 +43,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 |------|-----|------|----------|----------|
 | 1. 数据库 | sda-db-implementer | sda-code-reviewer | — | 5 |
 | 2. 后端 | sda-backend | sda-code-reviewer | mvn compile | 5 |
-| 3. 前端 | sda-frontend | sda-code-reviewer | yarn build | 5 |
+| 3. 前端 | sda-frontend | sda-code-reviewer | yarn build:prod | 5 |
 | 4. 测试 | sda-tester | sda-code-reviewer | — | 5 |
 | 5. 全量审查 | sda-code-reviewer | — | — | 5 |
 | 6. 质量门禁 | 主 CC | — | 全量 | — |
@@ -52,7 +52,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 ### 第一阶段：准备
 
-> **前置条件**：需求确认后，必须先按 CLAUDE.md 的 Spec 工作流创建 `.claude/specs/<feature>/` 下的四个文件（requirements / design / test-cases / tasks），/sdc-dev 命令读取这些 Spec 作为输入。
+> **前置条件**：需求确认后，必须先按 CLAUDE.md 的 Spec 工作流创建 `.claude/specs/<feature>/` 下的四个文件（requirements / design / test-cases / tasks），/sds-dev Skill 读取这些 Spec 作为输入。
 
 **E2E 测试框架检查（必须）**：
 
@@ -82,15 +82,15 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 |------|------|-------|-----------|------|-------------------|
 | 1 | 数据库实现 | sda-db-implementer | sda-code-reviewer 评审 DB 产出 | design.md（Schema + 文件产出清单） | 阶段二：数据库 |
 | 1a | DB 评审修复 | sda-db-implementer | 重新评审（最多 5 轮） | 审查报告 | — |
-| 2 | 后端实现 | sda-backend | sda-code-reviewer 评审后端产出 | design.md（API + 文件产出清单）、DB 产出文件 | 阶段二：后端 |
+| 2 | 后端实现 | sda-backend | sda-code-reviewer 评审后端产出 | design.md（API + 文件产出清单） | 阶段二：后端 |
 | 2a | 后端评审修复 | sda-backend | 重新评审（最多 5 轮） | 审查报告 | — |
 | **2b** | **后端编译验证** | **sda-backend** | **运行 `mvn clean compile`，失败则调用 sda-build-error-resolver 修复** | **后端代码** | **—** |
-| 3 | 前端实现 | sda-frontend | sda-code-reviewer 评审前端产出 | design.md（API + 文件产出清单）、后端 API 端点、原型 HTML | 阶段三：前端 |
+| 3 | 前端实现 | sda-frontend | sda-code-reviewer 评审前端产出 | design.md（API + 文件产出清单） | 阶段三：前端 |
 | 3a | 前端评审修复 | sda-frontend | 重新评审（最多 5 轮） | 审查报告 | — |
-| **3b** | **前端编译验证** | **sda-frontend** | **运行 `yarn build`，失败则调用 sda-build-error-resolver 修复** | **前端代码** | **—** |
-| 4 | 测试执行 | sda-tester | sda-code-reviewer 评审测试代码 | test-cases.md、前端页面 | 阶段四：测试执行 |
+| **3b** | **前端编译验证** | **sda-frontend** | **运行 `yarn build:prod`，失败则调用 sda-build-error-resolver 修复** | **前端代码** | **—** |
+| 4 | 测试执行 | sda-tester | sda-code-reviewer 评审测试代码 | test-cases.md、design.md（文件产出清单） | 阶段四：测试执行 |
 | 4a | 测试评审修复 | sda-tester | 重新评审（最多 5 轮） | 审查报告 | — |
-| 5 | 全量代码审查 | sda-code-reviewer | — | 所有代码文件 | 阶段五：审查 |
+| 5 | 全量代码审查 | sda-code-reviewer | — | design.md（通过第 11 节自发现所有代码文件） | 阶段五：审查 |
 | 6 | 提交 Git | 主 CC | — | 审查通过 | 阶段六：提交 Git |
 
 > **SDA 说明**：
@@ -106,11 +106,11 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 ### 第四阶段：质量门禁验证
 
-运行质量门禁清单（见 `.claude/steer/domain/quality-gate.md`），全部通过才交付。
+运行质量门禁清单（见 `.claude/rules/governance.md`），全部通过才交付。
 
 ## 数据库查询工具
 
-> sda-db-implementer 和 sda-code-reviewer 可使用 `python .claude/tools/db-query.py --query "SQL" --format table` 验证数据库状态（连接信息自动从 secrets.json 读取）。详见 `.claude/commands/sdc-dbquery.md`。
+> sda-db-implementer 和 sda-code-reviewer 可使用 `python .claude/tools/db-query.py --query "SQL" --format table` 验证数据库状态（连接信息自动从 secrets.json 读取）。详见 `.claude/skills/sds-dbquery/SKILL.md`。
 
 ## SDA 配置索引
 
@@ -142,13 +142,11 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 ### 自动编排调度流程
 
-`/sdc-dev` 命令执行时，主 CC 按以下流程自动调度 SDA，每个阶段完成后自动进入下一阶段，无需人工干预：
+`/sds-dev` Skill 执行时，主 CC 按以下流程自动调度 SDA，每个阶段完成后自动进入下一阶段，无需人工干预：
 
 ```
-读取 Spec → 检查 E2E 框架 → 调度 sda-db-implementer → 评审 → [sda-db-implementer 修复→重审]×5 → 调度 sda-backend → 评审 → [sda-backend 修复→重审]×5 → **后端编译验证（mvn compile，失败调用 sda-build-error-resolver）** → 调度 sda-frontend → 评审 → [sda-frontend 修复→重审]×5 → **前端编译验证（yarn build，失败调用 sda-build-error-resolver）** → 调度 sda-tester → 评审 → [sda-tester 修复→重审]×5 → 全量审查 → 按归属调度 SDA 修复 → [重审]×5 → 质量门禁
+读取 Spec → 检查 E2E 框架 → 调度 sda-db-implementer → 评审 → [sda-db-implementer 修复→重审]×5 → 调度 sda-backend → 评审 → [sda-backend 修复→重审]×5 → **后端编译验证（mvn clean compile，失败调用 sda-build-error-resolver）** → 调度 sda-frontend → 评审 → [sda-frontend 修复→重审]×5 → **前端编译验证（yarn build:prod，失败调用 sda-build-error-resolver）** → 调度 sda-tester → 评审 → [sda-tester 修复→重审]×5 → 全量审查 → 按归属调度 SDA 修复 → [重审]×5 → 质量门禁
 ```
-
-每个 SDA 阶段完成后，立即调用 sda-code-reviewer 对该阶段产出进行评审。评审不通过则修复后重新评审（最多 5 轮），5 轮后仍有问题暂停等待人工决策。通过后才进入下一阶段。
 
 ### 完整调度 Prompt 模板
 
@@ -164,19 +162,20 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 输入：
 - 设计文档：{SPEC_DIR}/design.md
 - 数据库设计章节：第 2 节
-- 文件产出清单：design.md 第 8 节
+- 文件产出清单：design.md 第 11 节
 
 输出：
-- SQL 脚本：创建数据库表
+- SQL 脚本：创建数据库表（含 SET NAMES utf8mb4 + -- DB_TYPE: MySQL 8.0）
+- 回滚脚本：幂等回滚 SQL
 - DO 实体类：对应数据库表的实体
 - Mapper 接口：MyBatis Mapper
 
 约束：
-- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
-- SQL 脚本开头添加 SET NAMES utf8mb4;（权威规范见 steer/foundation/tech.md）
+- 写文件规则：见 rules/governance.md 和对应 SDA 配置文件
+- SQL 脚本开头添加 SET NAMES utf8mb4;（规范见 CLAUDE.md 数据库规范节）
 - 参考 .claude/agents/sda-db-implementer.md 中的规范约束执行
 
-完成后：列出所有已创建的文件路径，供后续 agent 参考。
+完成后：列出所有已创建的文件路径。对照 design.md 第 11 节"数据库层"产出清单，确认路径一致。如有偏差在报告中说明。
 ```
 
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-db-implementer 产出
@@ -190,16 +189,20 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 ```
 你现在是 sda-backend（配置文件：.claude/agents/sda-backend.md）。
 
-前置：sda-db-implementer 已完成数据库结构创建，产出文件：{sda-db-implementer 输出的文件列表}
-
 任务：根据设计文档实现后端 API
 
 输入：
 - 设计文档：{SPEC_DIR}/design.md
 - API 设计章节：第 3 节
-- 文件产出清单：design.md 第 8 节
+- 文件产出清单：design.md 第 11 节
 - 测试用例文档：{SPEC_DIR}/test-cases.md
-- sda-db-implementer 产出文件：参考文件产出清单中的 DO/Mapper 路径
+
+前置发现（必须执行）：
+1. 读取 design.md 第 11 节，提取"数据库层"产出清单中的 DO/Mapper 文件路径
+2. 对清单中的每个路径，使用 Glob 验证文件是否存在于磁盘
+3. 读取已存在的 DO/Mapper 文件，了解字段定义和方法签名
+4. 如有文件缺失：在产出报告中标注，但仍基于 design.md 定义实现
+   如 Glob 在预期路径未找到文件，使用更宽泛模式（如 **/*XxxDO.java）搜索实际位置
 
 输出：
 - VO 类（Req/Resp/Page）
@@ -207,13 +210,16 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - Controller
 
 约束：
-- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
-- Service 层返回空集合而非 null
+- 写文件规则：见 rules/governance.md 和对应 SDA 配置文件
+- Service 层返回空集合而非 null（nil 集合兜底）
 - 使用 @Valid 校验参数
 - 权限注解必须与前端路由守卫同步
+- 使用 @PreAuthorize("@ss.hasPermission('xxx')") 而非 hasRole()
+- 使用 VO 接收参数，禁止直接绑定 DO
+- 写操作校验直属关系（IDOR 防护）
 - 参考 .claude/agents/sda-backend.md 中的规范约束执行
 
-完成后：列出所有已创建的文件路径和 API 端点路径，供后续 SDA 参考。
+完成后：列出所有已创建的文件路径和 API 端点路径。对照 design.md 第 11 节"后端层"产出清单，确认路径一致。如有偏差在报告中说明。
 ```
 
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-backend 产出
@@ -231,29 +237,35 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 ```
 你现在是 sda-frontend（配置文件：.claude/agents/sda-frontend.md）。
 
-前置：sda-backend 已完成后端 API 实现，产出文件：{sda-backend 输出的文件列表}，API 端点：{sda-backend 输出的端点列表}
-
 任务：根据设计文档实现前端页面
 
 输入：
 - 设计文档：{SPEC_DIR}/design.md
 - API 设计章节：第 3 节
-- 文件产出清单：design.md 第 8 节（含后端 API 路径和方法签名）
-- 后端 API 端点：{sda-backend 输出的端点列表}
+- 文件产出清单：design.md 第 11 节
 - 原型 HTML：（如有提供）
+
+前置发现（必须执行）：
+1. 读取 design.md 第 11 节，提取"后端层"产出清单中的 Controller 文件路径
+2. 对清单中的每个 Controller 路径，使用 Glob 验证文件是否存在于磁盘
+3. 读取已存在的 Controller 文件，提取实际 API 端点路径和方法签名
+4. 如有 Controller 文件缺失：以 design.md 第 3 节 API 定义为准，在报告中标注
+   如 Glob 在预期路径未找到文件，使用更宽泛模式（如 **/*XxxController.java）搜索
+5. 读取 design.md 第 11 节"数据库层"的 DO 文件路径（如需了解字段名用于表单字段映射）
 
 输出：
 - API 定义文件（api/xxx.js）
 - 列表页面
 - 表单弹窗
+- 菜单配置 SQL（一级 path 以 `/` 开头）
 
 约束：
-- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
+- 写文件规则：见 rules/governance.md 和对应 SDA 配置文件
 - API 返回值一律加空值守卫（?? []）
 - 权限指令 v-hasPermi 与后端 @PreAuthorize 必须同步
 - 参考 .claude/agents/sda-frontend.md 中的规范约束执行
 
-完成后：列出所有已创建的文件路径，供后续 agent 参考。
+完成后：列出所有已创建的文件路径。对照 design.md 第 11 节"前端层"产出清单，确认路径一致。如有偏差在报告中说明。
 ```
 
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-frontend 产出
@@ -262,7 +274,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 如有问题：重新调度 sda-frontend 修复（附加审查报告） → 重新评审（最多 5 轮）
 
 **前端编译验证**（评审通过后执行）：
-- 运行 `yarn build` 验证前端代码可编译
+- 运行 `yarn build:prod` 验证前端代码可编译
 - 如编译失败：调用 sda-build-error-resolver 诊断并修复错误
 - 修复后重新编译验证，通过后才进入下一阶段
 
@@ -271,14 +283,18 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 ```
 你现在是 sda-tester（配置文件：.claude/agents/sda-tester.md）。
 
-前置：sda-frontend 已完成前端页面实现，所有功能页面已可访问。
-
 任务：基于测试用例文档编写和执行测试
 
 输入：
 - 测试用例文档：{SPEC_DIR}/test-cases.md
 - 任务清单：{SPEC_DIR}/tasks.md（阶段四的测试任务）
-- 前端页面路径：{sda-frontend 输出的文件列表}
+- 设计文档：{SPEC_DIR}/design.md（用于发现被测代码路径）
+
+前置发现（必须执行）：
+1. 读取 design.md 第 11 节，提取所有层（数据库/后端/前端）的产出文件路径
+2. 对前端层产出清单中的每个页面路径，使用 Glob 验证文件是否存在于磁盘
+3. 对后端层产出清单中的每个 Controller 路径，使用 Glob 验证，提取实际 API 端点
+4. 如有文件缺失：跳过依赖该文件的测试用例，标记为"前置文件缺失，待补充"
 
 输出：
 - 单元测试代码（基于 test-cases.md 中的 UT 用例）
@@ -286,14 +302,14 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 测试执行结果
 
 约束：
-- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
+- 写文件规则：见 rules/governance.md 和对应 SDA 配置文件
 - E2E 测试必须包含三层验证：页面可达、数据加载、数据渲染非空
 - 全局错误监听：pageerror + console.error + 微任务等待
 - 测试数据覆盖关键角色组合（超级管理员、普通用户、无权限用户）
 - 如项目未配置 E2E 测试框架，跳过 E2E 测试代码编写，仅编写单元测试
 - 参考 .claude/agents/sda-tester.md 中的规范约束执行
 
-完成后：输出测试报告（通过/失败数量），如有失败列出失败用例。
+完成后：输出测试报告（通过/失败数量），如有失败列出失败用例。在报告中包含前置发现结果：哪些预期文件存在、哪些缺失。
 ```
 
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-tester 产出
@@ -314,7 +330,12 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 输入：
 - 需求文档：{SPEC_DIR}/requirements.md
 - 设计文档：{SPEC_DIR}/design.md
-- 所有新增/修改的文件：{汇总所有 agent 输出的文件列表}
+
+前置发现（必须执行）：
+1. 读取 design.md 第 11 节，提取所有层的预期产出文件路径
+2. 对每个预期路径，使用 Glob 验证文件是否存在于磁盘
+3. 汇总实际存在的文件列表作为审查范围
+4. 如有预期文件缺失：在审查报告中标注，评估对交叉一致性检查的影响
 
 审查维度（5 项 + 交叉检查）：
 1. 质量：逻辑正确性、边界情况、错误处理
@@ -324,11 +345,12 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 5. 测试覆盖：新增代码是否有测试、覆盖率
 6. 交叉一致性：前后端 API 参数/路径是否对齐、数据库字段与 DO 实体是否一致、前后端权限是否同步
 
-额外检查项（智能体质量门禁）：
-- nil 返回路径检查：后端 API 是否可能返回 null 集合
-- 裸赋值检查：前端是否直接赋值 API 返回值
-- 前后端权限一致性：前端路由守卫与后端 API 权限是否同步
-- placeholder 残留：TODO、FIXME、硬编码假数据
+额外检查项（对照 rules/security.md + rules/frontend.md）：
+- nil 返回路径检查：后端 API 是否可能返回 null 集合（security.md 🔴8）
+- 裸赋值检查：前端是否直接赋值 API 返回值（frontend.md 🔴3）
+- 前后端权限一致性：前端路由守卫与后端 API 权限是否同步（security.md 🟡1-3）
+- placeholder 残留：TODO、FIXME、硬编码假数据（frontend.md 🔴6-7）
+- 一级菜单 path 以 `/` 开头（frontend.md 🔴8）
 
 输出：按 P0/P1/P2 分类的问题清单
 
@@ -344,6 +366,11 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 前置：sda-code-reviewer 全量审查发现以下问题：{P0/P1 问题清单}
 
+前置发现：根据审查报告中的问题清单，定位需要修复的文件：
+1. 读取 design.md 第 11 节，获取对应层的预期文件路径
+2. 使用 Glob 验证文件存在，使用 Read 读取内容
+3. 结合审查报告中的文件名和行号定位具体问题位置
+
 任务：修复审查发现的问题
 
 输入：
@@ -353,7 +380,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 约束：
 - 一次只修一个问题，修完验证
 - 修复后不影响其他功能
-- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
+- 写文件规则：见 rules/governance.md 和对应 SDA 配置文件
 - 参考 .claude/agents/{对应配置文件} 中的规范约束执行
 
 修复完成后：重新运行测试确认通过，再重新提交 sda-code-reviewer 审查（最多 5 轮）。
@@ -363,14 +390,30 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 #### 阶段 7：质量门禁 + Git 提交
 
 ```
-所有代码已通过审查，执行质量门禁检查：
+所有代码已通过审查，执行质量门禁检查（见 .claude/rules/governance.md）：
 
-1. 运行编译/类型检查：{BUILD_CMD}
-2. 运行测试：{TEST_CMD}
-3. 检查 TODO/FIXME/占位符残留
-4. 确认无占位符残留后提交 Git
+P0 检查（阻断交付）：
+1. 后端编译：mvn clean compile
+2. 前端构建：yarn install && yarn build:prod
+3. 后端单元测试：mvn test
+4. 敏感信息扫描：python .claude/tools/secrets-sync.py --scan-configs
+5. 代码残留检查：grep -rE "TODO|FIXME|placeholder" src/
+6. 数据字段 nil 兜底：后端 + 前端防御性消费
+7. 前后端 API 对接完整性
+8. 权限校验生效
 
-提交信息遵循 .claude/rules/git.md 的 Commit 规范：
+P1 检查（记录排期）：
+9. 测试覆盖率
+10. E2E 测试（如已配置）
+11. 页面零 404
+12. API 零 500
+13. 测试用例与需求对应
+
+P2 检查（建议修复）：
+14. 数据库迁移脚本可重复执行
+15. 服务可达性验证
+
+全部通过后提交 Git，提交信息遵循 .claude/rules/governance.md 的 Git Commit 规范：
 type(scope): subject
 
 Body 包含本次变更的文件说明和 review 重点。
@@ -378,8 +421,8 @@ Body 包含本次变更的文件说明和 review 重点。
 
 ## 注意事项
 
-1. **每个 SDA 的 prompt 必须自包含**：看不到对话历史，需要完整上下文
-2. **写文件规则**：参考对应 SDA 配置文件中的规范约束（见 rules/sda-collaboration.md）
+1. **每个 SDA 的 prompt 必须自包含且去依赖**：看不到对话历史，需要完整上下文。所有 SDA 仅接收 Spec 文档路径作为输入，不接收前序 SDA 的运行时输出。每个 SDA 通过读取 design.md 第 11 节自行发现前序产出文件路径，再用 Glob/Read 验证和读取实际文件。design.md 第 11 节是 SDA 间文件路径对齐的唯一契约。
+2. **写文件规则**：参考对应 SDA 配置文件中的规范约束（见 rules/governance.md）
 3. **全新代码也要审查**：AI 生成的代码存在权限缺失、校验遗漏等问题
 4. **测试用例文档先行**：test-cases.md 在 Spec 阶段已创建，实现阶段参考测试用例文档编写代码
 5. **阶段内评审必须执行**：每个 SDA 阶段完成后立即评审，不可跳过，不可延迟到全量审查
@@ -409,9 +452,9 @@ Body 包含本次变更的文件说明和 review 重点。
 
 | 变更时机 | 处理方式 |
 |----------|----------|
-| 当前阶段内 | 完成当前阶段 → 调用 `/sdc-spec` 更新 Spec → 继续后续阶段 |
-| 阶段切换时 | 暂停 → 调用 `/sdc-spec` 更新 Spec → 评估已实现代码影响 → 继续或回滚 |
-| 全量审查后 | 评估变更范围 → 小变更直接修复 → 大变更调用 `/sdc-spec` 更新 Spec |
+| 当前阶段内 | 完成当前阶段 → 调用 `/sds-spec` 更新 Spec → 继续后续阶段 |
+| 阶段切换时 | 暂停 → 调用 `/sds-spec` 更新 Spec → 评估已实现代码影响 → 继续或回滚 |
+| 全量审查后 | 评估变更范围 → 小变更直接修复 → 大变更调用 `/sds-spec` 更新 Spec |
 
 ### 变更处理原则
 

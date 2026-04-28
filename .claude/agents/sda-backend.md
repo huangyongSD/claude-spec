@@ -56,10 +56,11 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 设计前必读
 
-1. `.claude/steer/foundation/tech.md` — 技术栈约束
-2. `.claude/rules/security.md` — 安全底线
-3. 现有同类模块代码 — 代码风格、命名规范
-4. 数据库实体类 — DO 字段定义
+1. design.md 第 11 节"文件产出清单" — 获取前序 SDA（sda-db-implementer）的预期产出路径，用 Glob/Read 发现实际文件
+2. `CLAUDE.md` 项目信息区和数据库规范节 — 技术栈约束
+3. `.claude/rules/security.md` — 安全底线
+4. 现有同类模块代码 — 代码风格、命名规范
+5. 数据库实体类 — DO 字段定义（通过 design.md 第 11 节定位路径后 Read）
 
 ## 核心能力
 

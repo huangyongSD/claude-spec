@@ -62,10 +62,11 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 设计前必读
 
-1. `.claude/specs/{name}/test-cases.md` — 测试用例文档
-2. `.claude/specs/{name}/design.md` — 设计文档（了解接口定义）
-3. 现有测试代码 — 测试风格、工具函数、公共 fixture
-4. `.claude/rules/testing.md` — 测试底线规则
+1. design.md 第 11 节"文件产出清单" — 获取所有层的预期产出路径，用 Glob/Read 发现被测代码
+2. `.claude/specs/{name}/test-cases.md` — 测试用例文档
+3. `.claude/specs/{name}/design.md` — 设计文档（了解接口定义）
+4. 现有测试代码 — 测试风格、工具函数、公共 fixture
+5. `.claude/rules/testing.md` — 测试底线规则
 
 ## 测试工作流程
 
