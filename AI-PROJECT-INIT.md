@@ -51,7 +51,7 @@ git ls-files .claude/ 2>/dev/null
 | 18 | commands/sdc-spec.md | .claude/commands/sdc-spec.md |
 | 19 | commands/sdc-dev.md | .claude/commands/sdc-dev.md |
 | 20 | agents/sda-architect.md | .claude/agents/sda-architect.md |
-| 21 | agents/sda-reviewer.md | .claude/agents/sda-reviewer.md |
+| 21 | agents/sda-doc-reviewer.md | .claude/agents/sda-doc-reviewer.md |
 | 22 | agents/sda-db-implementer.md | .claude/agents/sda-db-implementer.md |
 | 23 | agents/sda-backend.md | .claude/agents/sda-backend.md |
 | 24 | agents/sda-frontend.md | .claude/agents/sda-frontend.md |
@@ -112,7 +112,7 @@ cp claudeConfig/commands/sdc-buildfix.md .claude/commands/sdc-buildfix.md
 cp claudeConfig/commands/sdc-spec.md .claude/commands/sdc-spec.md
 cp claudeConfig/commands/sdc-dev.md .claude/commands/sdc-dev.md
 cp claudeConfig/agents/sda-architect.md .claude/agents/sda-architect.md
-cp claudeConfig/agents/sda-reviewer.md .claude/agents/sda-reviewer.md
+cp claudeConfig/agents/sda-doc-reviewer.md .claude/agents/sda-doc-reviewer.md
 cp claudeConfig/agents/sda-db-implementer.md .claude/agents/sda-db-implementer.md
 cp claudeConfig/agents/sda-backend.md .claude/agents/sda-backend.md
 cp claudeConfig/agents/sda-frontend.md .claude/agents/sda-frontend.md
@@ -631,7 +631,7 @@ find .claude -type f | sort
 .claude/agents/sda-code-reviewer.md
 .claude/agents/sda-db-implementer.md
 .claude/agents/sda-frontend.md
-.claude/agents/sda-reviewer.md
+.claude/agents/sda-doc-reviewer.md
 .claude/agents/sda-tester.md
 .claude/commands/sdc-buildfix.md
 .claude/commands/sdc-codereview.md

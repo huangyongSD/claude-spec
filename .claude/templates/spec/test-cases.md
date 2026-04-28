@@ -45,17 +45,8 @@
 | E2E-002 | {功能名}数据加载 | AC-xxx | 1. 进入 {页面}<br>2. 等待接口返回 | 至少一个 API 请求成功，数据渲染到页面 |
 
 **全局错误监听（必须内置）**：
-```javascript
-const errors = []
-page.on('pageerror', err => errors.push(err.message))
-page.on('console', msg => {
-  if (msg.type() === 'error') errors.push(msg.text())
-})
-// 断言前等待微任务完成
-await page.waitForLoadState('domcontentloaded')
-await page.waitForTimeout(500)
-expect(errors.filter(e => !isKnownNoise(e))).toEqual([])
-```
+
+> 全局错误监听代码片段详见 `rules/testing.md` 🔴 "全局错误监听" 节的强制代码模板。
 
 ### 2.2 功能测试（batch-b）
 

@@ -4,7 +4,9 @@
       "Bash(mvn **)",
       "Bash(yarn **)",
       "Bash(git **)",
-      "Bash(node **)"
+      "Bash(node **)",
+      "Bash(python .claude/tools/db-query.py **)",
+      "Bash(python .claude/tools/secrets-sync.py **)"
     ],
     "deny": [
       "Bash(rm -rf /)",
@@ -27,8 +29,21 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "(Read)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-sensitive-read.ps1"
+          }
+        ]
+      },
+      {
         "matcher": "(Edit|Write)",
         "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-sensitive-scan.ps1"
+          },
           {
             "type": "command",
             "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-edit-check.ps1"

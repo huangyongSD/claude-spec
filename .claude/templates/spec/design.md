@@ -13,16 +13,7 @@
 
 > 必填项。新表或修改现有表的设计。
 >
-> **字符集规范**：SQL 脚本必须在开头添加字符集声明，避免中文乱码：
-> ```sql
-> SET NAMES utf8mb4;
-> SET CHARACTER SET utf8mb4;
-> ```
->
-> **Docker MySQL 执行规范**：必须指定字符集
-> ```bash
-> docker exec <container> mysql -uroot -p123456 --default-character-set=utf8mb4 <db> -e "SQL语句"
-> ```
+> **字符集规范**：SQL 脚本字符集声明和 Docker MySQL 执行规范详见 `steer/foundation/tech.md`「数据库字符集规范」节。
 
 ### 2.1 新增表
 
@@ -215,7 +206,7 @@ end
 
 | 文件类型 | 文件路径 | 关键内容 |
 |----------|---------|---------|
-| API | api/xxx/index.ts | `getXxxPage`, `getXxx`, `createXxx`, `updateXxx`, `deleteXxx` |
+| API | api/xxx/index.js | `getXxxPage`, `getXxx`, `createXxx`, `updateXxx`, `deleteXxx` |
 | 列表页 | views/xxx/index.vue | 表格 + 搜索 + 分页 |
 | 表单弹窗 | views/xxx/XxxForm.vue | 新增/编辑表单 |
 

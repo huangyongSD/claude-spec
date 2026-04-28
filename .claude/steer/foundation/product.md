@@ -15,6 +15,6 @@
 - 为什么选择 Vue2：成熟生态、Element-UI 配套完善
 
 ## 团队约定
-- 代码审查需要几人通过：待填写
-- 分支命名规范：待填写
-- 发布流程：待填写
+- 代码审查需要几人通过：1人（AI审查）+ 1人（人工确认）
+- 分支命名规范：type/short-description（见 rules/git.md）
+- 发布流程：Squash and Merge to main，合并即删除分支（见 rules/git.md）

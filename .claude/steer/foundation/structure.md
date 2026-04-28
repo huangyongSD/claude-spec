@@ -76,6 +76,6 @@ yudao-boot-mini/
 
 > 这些决策不能从代码中推断出来，必须显式记录。
 
-- **ADR-001**：选择 SpringBoot 而非 Quarkus，因为企业级稳定性与社区成熟度（日期：待填写）
-- **ADR-002**：待填写
-- **ADR-003**：待填写
+- **ADR-001**：选择 SpringBoot 而非 Quarkus，因为企业级稳定性与社区成熟度（日期：2026-04-27）
+- **ADR-002**：选择 Vue2 而非 Vue3，因为 Element-UI 配套完善、团队熟悉度高、迁移成本大
+- **ADR-003**：选择 MyBatis-Plus 而非 JPA，因为 SQL 控制更精细、团队经验丰富、动态 SQL 灵活

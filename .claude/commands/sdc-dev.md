@@ -5,11 +5,26 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 # /sdc-dev 命令规范
 
+## 用途
+
+根据 Spec 文件编排全栈开发流程，按阶段调度 SDA 执行实现，每阶段含评审和编译验证，确保代码质量。
+
 ## 触发场景
 
-- 新项目全栈开发
-- 大规模功能实现（多模块协同）
-- 需要完整开发流程编排
+- `/sdc-spec` 完成后，用户确认"开始实现"
+- 用户手动调用 `/sdc-dev` 直接启动开发（需已有 Spec 文件）
+
+## 前置条件
+
+- Spec 文件已创建并通过评审（`.claude/specs/<feature>/` 下四个文件）
+- 项目环境可编译（后端 `mvn compile`、前端 `yarn build`）
+
+## 执行模式
+
+> 工作流详细规范见 `.claude/steer/domain/workflow.md`
+
+**CC 模式（Claude Code）**：可并行的阶段使用并行。DB+Backend 可合并为一个调度单元同时执行；前后端编译验证可并行运行。
+**Trea 模式（类似 Cursor/Trae）**：严格串行。每步一个 prompt，prompt 必须自包含（包含需求路径、设计路径、文件清单）。不可跳步。
 
 ## 概念说明
 
@@ -17,6 +32,21 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 > - **本文档（sdc-dev.md）** 定义的是 **调度阶段（Phase）**，每个阶段对应一个 SDA 执行单元
 > - **tasks.md** 定义的是 **具体任务（Task）**，是调度阶段的细粒度拆分
 > - 一个 Phase 可能包含多个 Task，例如"数据库阶段"包含 T-001~T-003
+
+## 编排总览
+
+```
+准备 → DB实现→评审→修复 → 后端实现→评审→编译验证 → 前端实现→评审→编译验证 → 测试→评审 → 全量审查→修复 → 质量门禁→Git提交
+```
+
+| 阶段 | SDA | 评审 | 编译验证 | 最多轮次 |
+|------|-----|------|----------|----------|
+| 1. 数据库 | sda-db-implementer | sda-code-reviewer | — | 5 |
+| 2. 后端 | sda-backend | sda-code-reviewer | mvn compile | 5 |
+| 3. 前端 | sda-frontend | sda-code-reviewer | yarn build | 5 |
+| 4. 测试 | sda-tester | sda-code-reviewer | — | 5 |
+| 5. 全量审查 | sda-code-reviewer | — | — | 5 |
+| 6. 质量门禁 | 主 CC | — | 全量 | — |
 
 ## 编排流程
 
@@ -44,22 +74,22 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 > **注意**：架构设计已在 Spec 阶段由 sda-architect agent 完成（design.md），本阶段直接进入实现。
 
-> **阶段内评审机制**：每个 SDA 阶段完成后，必须调用 sda-code-reviewer 对该阶段的产出进行评审。评审不通过则修复后重新评审，最多 3 轮。3 轮后仍有问题则暂停等待人工决策。通过后才进入下一阶段。
+> **阶段内评审机制**：每个 SDA 阶段完成后，必须调用 sda-code-reviewer 对该阶段的产出进行评审。评审不通过则修复后重新评审，最多 5 轮。5 轮后仍有问题则暂停等待人工决策。通过后才进入下一阶段。
 
 按顺序调度以下阶段：
 
 | 序号 | 阶段 | SDA | 阶段内评审 | 输入 | 对应 tasks.md 阶段 |
 |------|------|-------|-----------|------|-------------------|
 | 1 | 数据库实现 | sda-db-implementer | sda-code-reviewer 评审 DB 产出 | design.md（Schema + 文件产出清单） | 阶段二：数据库 |
-| 1a | DB 评审修复 | sda-db-implementer | 重新评审（最多 3 轮） | 审查报告 | — |
+| 1a | DB 评审修复 | sda-db-implementer | 重新评审（最多 5 轮） | 审查报告 | — |
 | 2 | 后端实现 | sda-backend | sda-code-reviewer 评审后端产出 | design.md（API + 文件产出清单）、DB 产出文件 | 阶段二：后端 |
-| 2a | 后端评审修复 | sda-backend | 重新评审（最多 3 轮） | 审查报告 | — |
+| 2a | 后端评审修复 | sda-backend | 重新评审（最多 5 轮） | 审查报告 | — |
 | **2b** | **后端编译验证** | **sda-backend** | **运行 `mvn clean compile`，失败则调用 sda-build-error-resolver 修复** | **后端代码** | **—** |
 | 3 | 前端实现 | sda-frontend | sda-code-reviewer 评审前端产出 | design.md（API + 文件产出清单）、后端 API 端点、原型 HTML | 阶段三：前端 |
-| 3a | 前端评审修复 | sda-frontend | 重新评审（最多 3 轮） | 审查报告 | — |
+| 3a | 前端评审修复 | sda-frontend | 重新评审（最多 5 轮） | 审查报告 | — |
 | **3b** | **前端编译验证** | **sda-frontend** | **运行 `yarn build`，失败则调用 sda-build-error-resolver 修复** | **前端代码** | **—** |
 | 4 | 测试执行 | sda-tester | sda-code-reviewer 评审测试代码 | test-cases.md、前端页面 | 阶段四：测试执行 |
-| 4a | 测试评审修复 | sda-tester | 重新评审（最多 3 轮） | 审查报告 | — |
+| 4a | 测试评审修复 | sda-tester | 重新评审（最多 5 轮） | 审查报告 | — |
 | 5 | 全量代码审查 | sda-code-reviewer | — | 所有代码文件 | 阶段五：审查 |
 | 6 | 提交 Git | 主 CC | — | 审查通过 | 阶段六：提交 Git |
 
@@ -72,11 +102,15 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 1. 汇总阶段 5 全量审查报告，按 P0/P1/P2 分类
 2. 按问题归属重新调度对应 SDA 修复（DB 问题→sda-db-implementer，后端问题→sda-backend，前端问题→sda-frontend，测试问题→sda-tester）
 3. 修复后重新运行测试
-4. 重新提交 sda-code-reviewer 审查（最多 3 轮）
+4. 重新提交 sda-code-reviewer 审查（最多 5 轮）
 
 ### 第四阶段：质量门禁验证
 
 运行质量门禁清单（见 `.claude/steer/domain/quality-gate.md`），全部通过才交付。
+
+## 数据库查询工具
+
+> sda-db-implementer 和 sda-code-reviewer 可使用 `python .claude/tools/db-query.py --query "SQL" --format table` 验证数据库状态（连接信息自动从 secrets.json 读取）。详见 `.claude/commands/sdc-dbquery.md`。
 
 ## SDA 配置索引
 
@@ -85,13 +119,12 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 | SDA | 配置文件 | 职责 |
 |-------|---------|------|
 | sda-architect | .claude/agents/sda-architect.md | 输出 Schema + API 文档 + 设计决策（Spec 阶段使用） |
-| sda-reviewer | .claude/agents/sda-reviewer.md | Spec 文档评审（Spec 阶段使用） |
+| sda-doc-reviewer | .claude/agents/sda-doc-reviewer.md | Spec 文档评审（Spec 阶段使用） |
 | sda-db-implementer | .claude/agents/sda-db-implementer.md | 创建数据库表、DO 实体类、Mapper 接口 |
 | sda-backend | .claude/agents/sda-backend.md | 创建 VO、Service、Controller |
 | sda-frontend | .claude/agents/sda-frontend.md | 创建 API 定义、页面、组件 |
 | sda-tester | .claude/agents/sda-tester.md | 编写/修复 E2E 测试 |
-| sda-code-reviewer | .claude/agents/sda-code-reviewer.md | 审查质量/安全/可维护性 |
-| sda-coverage-auditor | .claude/agents/sda-coverage-auditor.md | 独立审计覆盖率真实性 |
+| sda-code-reviewer | .claude/agents/sda-code-reviewer.md | 审查质量/安全/可维护性（含覆盖率审计） |
 | sda-build-error-resolver | .claude/agents/sda-build-error-resolver.md | 修复构建/测试错误 |
 
 ### 修复机制（无独立配置文件，复用实现 SDA）
@@ -112,10 +145,10 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 `/sdc-dev` 命令执行时，主 CC 按以下流程自动调度 SDA，每个阶段完成后自动进入下一阶段，无需人工干预：
 
 ```
-读取 Spec → 检查 E2E 框架 → 调度 sda-db-implementer → 评审 → [sda-db-implementer 修复→重审]×3 → 调度 sda-backend → 评审 → [sda-backend 修复→重审]×3 → **后端编译验证（mvn compile，失败调用 sda-build-error-resolver）** → 调度 sda-frontend → 评审 → [sda-frontend 修复→重审]×3 → **前端编译验证（yarn build，失败调用 sda-build-error-resolver）** → 调度 sda-tester → 评审 → [sda-tester 修复→重审]×3 → 全量审查 → 按归属调度 SDA 修复 → [重审]×3 → 质量门禁
+读取 Spec → 检查 E2E 框架 → 调度 sda-db-implementer → 评审 → [sda-db-implementer 修复→重审]×5 → 调度 sda-backend → 评审 → [sda-backend 修复→重审]×5 → **后端编译验证（mvn compile，失败调用 sda-build-error-resolver）** → 调度 sda-frontend → 评审 → [sda-frontend 修复→重审]×5 → **前端编译验证（yarn build，失败调用 sda-build-error-resolver）** → 调度 sda-tester → 评审 → [sda-tester 修复→重审]×5 → 全量审查 → 按归属调度 SDA 修复 → [重审]×5 → 质量门禁
 ```
 
-每个 SDA 阶段完成后，立即调用 sda-code-reviewer 对该阶段产出进行评审。评审不通过则修复后重新评审（最多 3 轮），3 轮后仍有问题暂停等待人工决策。通过后才进入下一阶段。
+每个 SDA 阶段完成后，立即调用 sda-code-reviewer 对该阶段产出进行评审。评审不通过则修复后重新评审（最多 5 轮），5 轮后仍有问题暂停等待人工决策。通过后才进入下一阶段。
 
 ### 完整调度 Prompt 模板
 
@@ -139,8 +172,8 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - Mapper 接口：MyBatis Mapper
 
 约束：
-- 每次写入 ≤ 200 行，大文件分模块写入
-- SQL 脚本开头添加 SET NAMES utf8mb4;
+- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
+- SQL 脚本开头添加 SET NAMES utf8mb4;（权威规范见 steer/foundation/tech.md）
 - 参考 .claude/agents/sda-db-implementer.md 中的规范约束执行
 
 完成后：列出所有已创建的文件路径，供后续 agent 参考。
@@ -149,7 +182,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-db-implementer 产出
 - 审查范围：SQL 脚本、DO 实体类、Mapper 接口
 - 审查维度：表结构完整性（对照 design.md）、字段类型正确性、索引合理性、命名规范
-- 如有问题：重新调度 sda-db-implementer 修复（附加审查报告） → 重新评审（最多 3 轮）
+- 如有问题：重新调度 sda-db-implementer 修复（附加审查报告） → 重新评审（最多 5 轮）
 - 通过后继续
 
 #### 阶段 2：sda-backend 调度
@@ -174,7 +207,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - Controller
 
 约束：
-- 每次写入 ≤ 200 行，大文件分模块写入
+- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
 - Service 层返回空集合而非 null
 - 使用 @Valid 校验参数
 - 权限注解必须与前端路由守卫同步
@@ -186,7 +219,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-backend 产出
 - 审查范围：VO 类、Service 接口和实现、Controller
 - 审查维度：API 完整性（对照 design.md）、参数校验、权限注解、null 返回路径、错误处理
-- 如有问题：重新调度 sda-backend 修复（附加审查报告） → 重新评审（最多 3 轮）
+- 如有问题：重新调度 sda-backend 修复（附加审查报告） → 重新评审（最多 5 轮）
 
 **后端编译验证**（评审通过后执行）：
 - 运行 `mvn clean compile` 验证 Java 代码可编译
@@ -215,7 +248,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 表单弹窗
 
 约束：
-- 每次写入 ≤ 200 行，大文件分模块写入
+- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
 - API 返回值一律加空值守卫（?? []）
 - 权限指令 v-hasPermi 与后端 @PreAuthorize 必须同步
 - 参考 .claude/agents/sda-frontend.md 中的规范约束执行
@@ -226,7 +259,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-frontend 产出
 - 审查范围：API 定义文件、列表页面、表单弹窗
 - 审查维度：空值守卫（?? []）、权限指令与后端同步、placeholder 残留、UI 交互完整性
-- 如有问题：重新调度 sda-frontend 修复（附加审查报告） → 重新评审（最多 3 轮）
+- 如有问题：重新调度 sda-frontend 修复（附加审查报告） → 重新评审（最多 5 轮）
 
 **前端编译验证**（评审通过后执行）：
 - 运行 `yarn build` 验证前端代码可编译
@@ -253,7 +286,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 测试执行结果
 
 约束：
-- 每次写入 ≤ 200 行，大文件分模块写入
+- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
 - E2E 测试必须包含三层验证：页面可达、数据加载、数据渲染非空
 - 全局错误监听：pageerror + console.error + 微任务等待
 - 测试数据覆盖关键角色组合（超级管理员、普通用户、无权限用户）
@@ -266,7 +299,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-tester 产出
 - 审查范围：单元测试代码、E2E 测试代码
 - 审查维度：测试覆盖率（对照 test-cases.md）、断言有效性、测试数据合理性、三层验证完整性
-- 如有问题：重新调度 sda-tester 修复（附加审查报告） → 重新评审（最多 3 轮）
+- 如有问题：重新调度 sda-tester 修复（附加审查报告） → 重新评审（最多 5 轮）
 - 通过后继续
 
 #### 阶段 5：sda-code-reviewer 全量审查调度
@@ -320,11 +353,11 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 约束：
 - 一次只修一个问题，修完验证
 - 修复后不影响其他功能
-- 每次写入 ≤ 200 行
+- 写文件规则：见 rules/sda-collaboration.md 和对应 SDA 配置文件
 - 参考 .claude/agents/{对应配置文件} 中的规范约束执行
 
-修复完成后：重新运行测试确认通过，再重新提交 sda-code-reviewer 审查（最多 3 轮）。
-3 轮后仍有 P0/P1 问题，暂停等待人工决策。
+修复完成后：重新运行测试确认通过，再重新提交 sda-code-reviewer 审查（最多 5 轮）。
+5 轮后仍有 P0/P1 问题，暂停等待人工决策。
 ```
 
 #### 阶段 7：质量门禁 + Git 提交
@@ -346,9 +379,43 @@ Body 包含本次变更的文件说明和 review 重点。
 ## 注意事项
 
 1. **每个 SDA 的 prompt 必须自包含**：看不到对话历史，需要完整上下文
-2. **写文件规则在 prompt 开头强调**：≤200 行/次，大文件分模块写入
+2. **写文件规则**：参考对应 SDA 配置文件中的规范约束（见 rules/sda-collaboration.md）
 3. **全新代码也要审查**：AI 生成的代码存在权限缺失、校验遗漏等问题
 4. **测试用例文档先行**：test-cases.md 在 Spec 阶段已创建，实现阶段参考测试用例文档编写代码
 5. **阶段内评审必须执行**：每个 SDA 阶段完成后立即评审，不可跳过，不可延迟到全量审查
-6. **多轮评审上限**：每个评审点最多 3 轮，3 轮后由主 CC 决策是否继续修复或标记为已知问题
+6. **多轮评审上限**：每个评审点最多 5 轮，5 轮后由用户决定是否继续修复或标记为已知问题
 7. **评审修复分工**：评审发现问题后，重新调度产出该代码的 SDA 修复——数据库问题→sda-db-implementer，后端问题→sda-backend，前端问题→sda-frontend，测试问题→sda-tester。修复 prompt 必须附加审查报告上下文
+
+## 进度跟踪
+
+每个阶段完成后，主 CC 应更新 tasks.md 中的任务状态，并向用户汇报进度：
+
+```markdown
+## 开发进度
+
+| 阶段 | 状态 | 评审结果 | 备注 |
+|------|------|----------|------|
+| 1. 数据库 | ✅ 已完成 | P0:0 P1:1 P2:0 | P1 已修复 |
+| 2. 后端 | 🔄 进行中 | — | — |
+| 3. 前端 | ⬜ 未开始 | — | — |
+| 4. 测试 | ⬜ 未开始 | — | — |
+| 5. 全量审查 | ⬜ 未开始 | — | — |
+| 6. 质量门禁 | ⬜ 未开始 | — | — |
+```
+
+## 开发中需求变更
+
+开发过程中如遇需求变更，按以下流程处理：
+
+| 变更时机 | 处理方式 |
+|----------|----------|
+| 当前阶段内 | 完成当前阶段 → 调用 `/sdc-spec` 更新 Spec → 继续后续阶段 |
+| 阶段切换时 | 暂停 → 调用 `/sdc-spec` 更新 Spec → 评估已实现代码影响 → 继续或回滚 |
+| 全量审查后 | 评估变更范围 → 小变更直接修复 → 大变更调用 `/sdc-spec` 更新 Spec |
+
+### 变更处理原则
+
+- **不中断当前阶段**：当前 SDA 正在执行时不暂停，完成后再处理变更
+- **先更新 Spec 再改代码**：确保变更可追溯
+- **评估已实现代码影响**：变更可能影响已完成的阶段，需评估是否回滚
+- **通知用户确认**：变更影响超过当前阶段时，需用户确认处理方案

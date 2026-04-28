@@ -13,7 +13,7 @@ SDA 编排分两个阶段，必须按依赖顺序串行执行：
 
 **Spec 阶段**（由 `/sdc-spec` 命令触发）：
 ```
-主CC（输出 requirements.md）→ sda-reviewer（评审）→ sda-architect（输出 design.md）→ sda-reviewer（评审）→ sda-architect（输出 test-cases.md）→ sda-reviewer（评审）→ 主CC（输出 tasks.md）→ sda-reviewer（评审）
+主CC（输出 requirements.md）→ sda-doc-reviewer（评审）→ sda-architect（输出 design.md）→ sda-doc-reviewer（评审）→ sda-architect（输出 test-cases.md）→ sda-doc-reviewer（评审）→ 主CC（输出 tasks.md）→ sda-doc-reviewer（评审）
 ```
 
 **实现阶段**（由 `/sdc-dev` 命令触发）：
@@ -56,7 +56,7 @@ sda-db+sda-backend → sda-frontend → sda-tester → sda-code-reviewer
 | SDA | 阶段 | 角色 | 职责 | 配置文件 |
 |-------|------|------|------|---------|
 | sda-architect | Spec | 架构师 | 输出 Schema + API 文档 + 设计决策 + 测试用例文档 | 6.13 节 |
-| sda-reviewer | Spec | Spec 评审 | 对 Spec 文件（requirements/design/test-cases/tasks）进行结构化评审 | 6.15 节 |
+| sda-doc-reviewer | Spec | Spec 评审 | 对 Spec 文件（requirements/design/test-cases/tasks）进行结构化评审 | 6.15 节 |
 | sda-db-implementer | 实现 | 数据库实现 | 创建数据库表、DO 实体类、Mapper 接口 | 6.16 节（与 sda-backend 合并调度） |
 | sda-backend | 实现 | 后端实现 | 创建 VO、Service、Controller | 6.17 节（与 sda-db-implementer 合并调度） |
 | sda-frontend | 实现 | 前端实现 | 创建 API 定义、页面、组件 | 6.18 节 |
@@ -64,7 +64,7 @@ sda-db+sda-backend → sda-frontend → sda-tester → sda-code-reviewer
 | sda-code-reviewer | 实现 | 代码审查 | 审查质量/安全/可维护性 | 6.14 节 |
 | sda-build-error-resolver | 实现 | 构建排障 | 修复构建/测试错误 | 6.21 节 |
 
-> **阶段说明**：Spec 阶段的 SDA（sda-architect、sda-reviewer）由 `/sdc-spec` 命令调度，产出设计文档和测试用例文档；实现阶段的 SDA（sda-db-implementer 至 sda-build-error-resolver）由 `/sdc-dev` 命令调度，产出代码和测试。两个阶段不可交叉——实现阶段必须等 Spec 阶段全部完成（四个 Spec 文件均通过评审）后才开始。
+> **阶段说明**：Spec 阶段的 SDA（sda-architect、sda-doc-reviewer）由 `/sdc-spec` 命令调度，产出设计文档和测试用例文档；实现阶段的 SDA（sda-db-implementer 至 sda-build-error-resolver）由 `/sdc-dev` 命令调度，产出代码和测试。两个阶段不可交叉——实现阶段必须等 Spec 阶段全部完成（四个 Spec 文件均通过评审）后才开始。
 
 **修复机制**：评审发现问题后，重新调度产出该代码的 SDA 进行修复（而非单独的 fixer 角色）：
 

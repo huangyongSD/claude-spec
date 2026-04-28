@@ -35,7 +35,7 @@ updated: 2026-04-22
 
 ---
 
-## RuoYi 特定问题
+## yudao（芋道）特定问题
 
 ### 代码生成器输出不完整
 问题：生成的代码缺少某些文件或字段
@@ -50,7 +50,7 @@ updated: 2026-04-22
 解决：确认 sys_dict_type 和 sys_dict_data 有对应记录；检查前端 this.getDicts() 调用的字典类型编码是否正确；确认 Redis 缓存是否过期
 
 ### 跨模块依赖问题
-问题：ruoyi-admin 编译报找不到 ruoyi-system 的类
+问题：yudao-server 编译报找不到 yudao-module-system 的类
 解决：确认各子模块 pom.xml 中 dependency 引用正确；先 `mvn install` 安装依赖模块再到 admin 模块编译；检查 Maven reactor 构建顺序
 
 ---
@@ -99,15 +99,15 @@ updated: 2026-04-22
 
 ### Redis 序列化错误
 错误：Cannot deserialize / SerializationException
-解决：确认 RedisTemplate 配置了正确的序列化器（`StringRedisSerializer` 用于 key，`Jackson2JsonRedisSerializer` 或 `GenericJackson2JsonRedisSerializer` 用于 value）；检查存储对象是否可序列化；RuoYi 默认使用 JDK 序列化，切换为 JSON 序列化可避免类变更后反序列化失败
+解决：确认 RedisTemplate 配置了正确的序列化器（`StringRedisSerializer` 用于 key，`Jackson2JsonRedisSerializer` 或 `GenericJackson2JsonRedisSerializer` 用于 value）；检查存储对象是否可序列化；yudao 默认使用 JDK 序列化，切换为 JSON 序列化可避免类变更后反序列化失败
 
 ### Redis 缓存与数据库不一致
 问题：更新数据库后缓存未同步，读取到旧数据
-解决：采用「先更新数据库再删除缓存」策略；使用 @CacheEvict 注解在更新方法上同步清缓存；RuoYi 中通过 RedisCache.clearCacheByKey 手动清除；注意 Redis 过期时间设置不宜过长
+解决：采用「先更新数据库再删除缓存」策略；使用 @CacheEvict 注解在更新方法上同步清缓存；yudao 中通过 RedisCache.clearCacheByKey 手动清除；注意 Redis 过期时间设置不宜过长
 
 ### Redis OOM / 内存溢出
 问题：Redis 占用内存持续增长或报 OOM
-解决：设置 maxmemory 和淘汰策略（`maxmemory-policy allkeys-lru`）；检查是否有大 key（`redis-cli --bigkeys`）；为缓存键设置合理的过期时间（TTL）；RuoYi 中定期清理 sys_config/sys_dict 等缓存
+解决：设置 maxmemory 和淘汰策略（`maxmemory-policy allkeys-lru`）；检查是否有大 key（`redis-cli --bigkeys`）；为缓存键设置合理的过期时间（TTL）；yudao 中定期清理 sys_config/sys_dict 等缓存
 
 ---
 
@@ -143,7 +143,7 @@ updated: 2026-04-22
 
 ### Kafka 与 SpringBoot 集成报错
 问题：KafkaTemplate 注入失败或 @KafkaListener 不生效
-解决：确认 spring-kafka 依赖版本与 SpringBoot 版本兼容；检查 @EnableKafka 注解是否添加；确认 KafkaTemplate 的 key/value serializer 配置；RuoYi 集成 Kafka 时需注意与现有 Redis 缓存的消息通道不冲突
+解决：确认 spring-kafka 依赖版本与 SpringBoot 版本兼容；检查 @EnableKafka 注解是否添加；确认 KafkaTemplate 的 key/value serializer 配置；yudao 集成 Kafka 时需注意与现有 Redis 缓存的消息通道不冲突
 
 ---
 
@@ -158,9 +158,10 @@ updated: 2026-04-22
 问题：babel-plugin-component 配置后样式缺失或组件找不到
 解决：确认 .babelrc 或 babel.config.js 中 styleLibraryName 路径正确；检查 element-ui 版本与插件版本兼容性
 
-### Vue3 Vite 启动白屏
+### Vue3 Vite 启动白屏（仅供参考，本项目为 Vue2）
 问题：Vite dev server 启动后页面空白
 解决：确认 vite.config.js 中 base 配置；检查 @vitejs/plugin-vue 是否安装；确认 index.html 中 script 引用路径正确（`/src/main.ts` 不是 `/src/main.js`）
+> **注**：本项目使用 Vue2 + webpack，不适用此排障方案。
 
 ### Vue Router 路由守卫死循环
 问题：页面不断重定向到同一路由
@@ -396,6 +397,8 @@ mvn clean install -DskipTests
 ---
 
 ## Docker MySQL 字符集问题
+
+> 字符集规范详见 `steer/foundation/tech.md`，以下为 Docker 环境排障场景的具体操作步骤。
 
 ### 客户端字符集导致中文乱码
 问题：通过 `docker exec mysql` 执行含中文的 SQL，数据库存储为乱码

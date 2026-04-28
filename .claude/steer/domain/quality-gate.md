@@ -50,7 +50,7 @@ updated: 2026-04-22
 | 序号 | 失败项 | 处理方式 | 责任人 |
 |------|--------|---------|--------|
 | 1 | 编译失败 | sda-build-error-resolver agent 修复 | SDA |
-| 2 | 覆盖率不足 | sda-tester agent 补充测试，sda-coverage-auditor agent 审计 | SDA |
+| 2 | 覆盖率不足 | sda-tester agent 补充测试，sda-code-reviewer agent 审计覆盖率 | SDA |
 | 3 | 测试失败 | 分析 bug 来源，对应 SDA 修复 | SDA/人工 |
 | 4 | 页面 404 | 检查路由配置，E2E 测试覆盖所有路由 | 前端开发者 |
 | 5 | API 500 | 修复错误处理逻辑，前端加容错机制 | 后端开发者 |

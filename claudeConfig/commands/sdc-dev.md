@@ -85,7 +85,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 | SDA | 配置文件 | 职责 |
 |-------|---------|------|
 | sda-architect | .claude/agents/sda-architect.md | 输出 Schema + API 文档 + 设计决策（Spec 阶段使用） |
-| sda-reviewer | .claude/agents/sda-reviewer.md | Spec 文档评审（Spec 阶段使用） |
+| sda-doc-reviewer | .claude/agents/sda-doc-reviewer.md | Spec 文档评审（Spec 阶段使用） |
 | sda-db-implementer | .claude/agents/sda-db-implementer.md | 创建数据库表、DO 实体类、Mapper 接口 |
 | sda-backend | .claude/agents/sda-backend.md | 创建 VO、Service、Controller |
 | sda-frontend | .claude/agents/sda-frontend.md | 创建 API 定义、页面、组件 |

@@ -9,6 +9,9 @@ updated: 2026-04-22
 ## 🔴 立即执行（违反即阻断）
 
 ### 测试基础设施（E2E 测试必须遵守）
+
+> **项目现状**：本项目当前未配置 E2E 测试框架（Playwright/Cypress）。以下 E2E 相关规则仅在配置 E2E 框架后强制执行。当前阶段，E2E 测试用例（T-E2E-xxx）降级为人工验收。见 sdc-dev.md "E2E 测试框架检查" 降级方案。
+
 1. **全局错误监听** — 必须同时监听两种错误源：
    ```javascript
    page.on('pageerror', err => errors.push(err.message))

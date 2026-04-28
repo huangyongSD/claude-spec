@@ -17,7 +17,7 @@
 ## 修改限制
 
 - 修改 yudao-framework 前必须先 `/sdc-plan` 并获得确认
-- 修改 yudao-dependencies 需要通知待填写（通过待填写）
+- 修改 yudao-dependencies 需要通知项目负责人（通过 Git commit message 或 Issue comment）
 
 ## 代码风格强制
 
