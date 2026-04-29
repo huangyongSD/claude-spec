@@ -22,15 +22,13 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 ## 约定
 
 - **后端固定 Maven**，前端固定 npm — 不需要检测包管理器
-- **不替换 .ps1 和 .py 脚本** — 这些是通用工具，已覆盖 mvn/npm/pip/gradle
-- **不替换 settings.json** — allow 列表固定为 Bash(mvn/npm/git/node/python工具)
 - **表达差异可接受** — 版本号/关键信息正确即可，空格/格式/措辞差异不阻断
 - **规则/治理/流程内容不替换** — 只替换项目信息段落
 
 ## 工作流程
 
 ```
-扫描项目源码 → 展示扫描结果供用户确认 → Edit 替换 14 个配置文件 → 评审验证 → 最终报告
+扫描项目源码 → 展示扫描结果供用户确认 → Edit 替换 14 个配置文件 → 审批通用配置文件 → 评审验证 → 最终报告
 ```
 
 ---
@@ -270,24 +268,29 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 - 框架错误类别 → 实际框架名
 - 依赖树命令 → Maven 固定不改
 
-### 不替换文件
+---
 
-- `.claude/settings.json` — allow 列表固定
-- `.claude/hooks/*.ps1` — 通用脚本
-- `.claude/tools/*.py` — 通用工具
-- 各文件中的规则/治理/流程内容 — 只替换项目信息
+## 第四步：审批通用配置文件
+
+审批 settings.json、hooks/*.ps1、tools/*.py 是否符合当前项目技术栈和项目结构，不符合则修改。
+
+- Read: `.claude/settings.json` → 检查 allow 列表是否覆盖当前项目的命令（Bash 允许 mvn/npm/git/node/python 等）
+- Glob: `.claude/hooks/*.ps1` → 读取每个 ps1 脚本，检查是否涉及项目特有的路径/命令
+- Glob: `.claude/tools/*.py` → 读取每个 py 工具，检查是否涉及项目特有的路径/框架
+
+发现不符合 → Edit 修正。
 
 ---
 
-## 第四步：评审验证
+## 第五步：评审验证
 
 替换完成后，自动触发评审：
 
-### 4.1 逐文件 Read 检查
+### 5.1 逐文件 Read 检查
 
 Read 所有 14 个被修改的文件，逐文件验证替换内容。
 
-### 4.2 交叉验证
+### 5.2 交叉验证
 
 - 技术栈描述 ↔ pom.xml/package.json 版本号一致？
 - 数据库类型 ↔ JDBC URL 一致？
@@ -296,7 +299,7 @@ Read 所有 14 个被修改的文件，逐文件验证替换内容。
 - 命令 ↔ package.json scripts 一致？
 - SDA 代码模式 ↔ 实际代码采样一致？
 
-### 4.3 SDA 特殊验证
+### 5.3 SDA 特殊验证
 
 - sda-db-implementer 的 SQL template charset/engine/collation ↔ 实际 DDL 一致？
 - sda-backend 的 VO 命名 ↔ 实际 VO 类名一致？
@@ -304,17 +307,17 @@ Read 所有 14 个被修改的文件，逐文件验证替换内容。
 - sda-tester 的 stubs ↔ 实际组件一致？
 - security.md 的 ORM 检查 ↔ 项目实际 ORM 一致？
 
-### 4.4 修正
+### 5.4 修正
 
 发现不一致 → Edit 修正。修正后重新验证该文件。
 
-### 4.5 通过
+### 5.5 通过
 
-全部验证通过 → 进入第五步。
+全部验证通过 → 进入第六步。
 
 ---
 
-## 第五步：最终报告
+## 第六步：最终报告
 
 展示完整验证报告：
 
@@ -343,10 +346,10 @@ Read 所有 14 个被修改的文件，逐文件验证替换内容。
   ✅ sda-code-reviewer.md — ORM检查/权限
   ✅ sda-build-error-resolver.md — 框架/命令
 
-不修改文件（4 个）：
-  ⬜ settings.json — 固定配置
-  ⬜ *.ps1 hooks — 通用脚本
-  ⬜ *.py tools — 通用工具
+已审批通用配置文件（3 类）：
+  ✅ settings.json — allow 列表
+  ✅ *.ps1 hooks — 路径/命令适配
+  ✅ *.py tools — 路径/框架适配
 
 评审验证：
   ✅ 全部交叉验证通过
