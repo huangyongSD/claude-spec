@@ -33,6 +33,7 @@ globs: ["**/*.java", "**/*.sql", "**/*.vue", "**/*.js", "**/*.yaml", "**/*.yml",
 9. **写操作校验直属关系** — 防止 IDOR 横向越权，必须校验操作者与目标的直属关系
 10. **用 VO/DTO 接收前端参数** — 禁止直接绑定数据库 DO/Entity，防止字段注入
 11. **权限注解用 hasPermi 非 hasRole** — `@PreAuthorize("@ss.hasPermi('xxx:action')")` 而非 `@PreAuthorize("hasRole('MANAGER')")`。角色检查 ≠ 权限检查
+12. **调试代码输出 JSON 对象必须转字符串** — `log.info(JSON.stringify(obj))` 禁止直接 `log.info(obj))`，避免对象引用或循环引用导致日志输出异常或性能问题
 
 ### 前端安全
 

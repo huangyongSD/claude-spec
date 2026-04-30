@@ -28,7 +28,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 ## 工作流程
 
 ```
-扫描项目源码 → 展示扫描结果供用户确认 → Edit 替换 14 个配置文件 → 审批通用配置文件 → 评审验证 → 最终报告
+扫描项目源码 → E2E 框架自动配置 → 展示扫描结果供用户确认 → Edit 替换 14 个配置文件 → 审批通用配置文件 → 评审验证 → 最终报告
 ```
 
 ---
@@ -117,7 +117,125 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 
 ---
 
-## 第二步：展示扫描结果，确认范围
+## 第二步：E2E 框架自动配置（强制）
+
+> **强制要求**：所有项目必须配置 E2E 测试框架，不允许跳过或降级。
+
+### 2.1 检测当前 E2E 状态
+
+检查项目中是否已存在 E2E 测试框架：
+
+1. 检查 `package.json` 中是否已安装 Playwright / Cypress / Nightwatch 等
+2. 检查是否存在 E2E 配置文件（如 `playwright.config.js`、`cypress.config.ts`）
+3. 检查是否存在 E2E 测试目录（如 `tests/e2e/`、`cypress/`）
+
+### 2.2 如未配置，自动安装 Playwright
+
+> **选择理由**：Playwright 是现代 Web 应用的首选 E2E 框架，支持 Vue/React 等主流框架，API 简洁，文档完善。
+
+**前置条件**：项目必须有 `package.json`（纯后端项目跳过此步骤）
+
+**安装步骤**：
+
+1. **安装 Playwright 依赖**
+   ```bash
+   cd <前端项目目录>
+   npm install -D @playwright/test
+   ```
+
+2. **创建 Playwright 配置文件**
+   创建 `playwright.config.js`（内容见下方模板）
+
+3. **创建测试目录结构**
+   ```
+   <前端项目>/
+   └── tests/
+       └── e2e/
+           ├── pages/           # 页面对象
+           ├── specs/           # 测试用例
+           ├── fixtures/         # 测试数据
+           └── utils/           # 测试工具
+   ```
+
+4. **添加 E2E 测试脚本到 package.json**
+   在 `scripts` 中添加：
+   ```json
+   {
+     "test:e2e": "playwright test",
+     "test:e2e:ui": "playwright test --ui",
+     "test:e2e:headed": "playwright test --headed"
+   }
+   ```
+
+5. **安装浏览器**
+   ```bash
+   npx playwright install chromium
+   ```
+
+### 2.3 Playwright 配置模板
+
+创建 `playwright.config.js`：
+
+```javascript
+const { defineConfig, devices } = require('@playwright/test');
+
+module.exports = defineConfig({
+  testDir: './tests/e2e/specs',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  use: {
+    baseURL: process.env.BASE_URL || 'http://localhost:80',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:80',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
+});
+```
+
+### 2.4 验证 E2E 框架安装成功
+
+```bash
+cd <前端项目目录>
+npx playwright test --version
+```
+
+验证输出包含 Playwright 版本号，表示安装成功。
+
+### 2.5 纯后端项目处理
+
+如项目无 `package.json`（纯后端项目）：
+
+1. **跳过前端 E2E 配置**，不阻断初始化流程
+2. **在初始化报告中标注**：纯后端项目，前端 E2E 测试待配置
+3. **后续处理**：如后续添加前端模块，再调用 `/sds-init` 重新初始化
+
+### 2.6 移动端项目处理
+
+> 移动端项目（uni-app、React Native、Flutter 等）不适用 Web E2E 测试框架。
+
+如检测到移动端项目（如 package.json 中包含 uni-app、react-native、flutter、taro、mpvue 等）：
+
+1. **跳过 Playwright 配置**，不阻断初始化流程
+2. **在初始化报告中标注**：移动端项目，E2E 测试降级为人工验收
+3. **说明**：移动端 E2E 需要 Appium/Detox 等原生测试框架，建议在专项测试方案中处理
+
+---
+
+## 第四步：展示扫描结果，确认范围
 
 用 AskUserQuestion 展示扫描摘要，包括：
 
@@ -134,7 +252,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 
 ---
 
-## 第三步：Edit 替换 14 个配置文件
+## 第五步：Edit 替换 14 个配置文件
 
 逐文件逐段落 Edit，只替换项目信息段落，不触碰规则/治理/流程内容。
 
@@ -270,7 +388,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 
 ---
 
-## 第四步：审批通用配置文件
+## 第六步：审批通用配置文件
 
 审批 settings.json、hooks/*.ps1、tools/*.py 是否符合当前项目技术栈和项目结构，不符合则修改。
 
@@ -282,7 +400,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 
 ---
 
-## 第五步：评审验证
+## 第七步：评审验证
 
 替换完成后，自动触发评审：
 
@@ -317,7 +435,7 @@ Read 所有 14 个被修改的文件，逐文件验证替换内容。
 
 ---
 
-## 第六步：最终报告
+## 第八步：最终报告
 
 展示完整验证报告：
 
@@ -329,6 +447,14 @@ Read 所有 14 个被修改的文件，逐文件验证替换内容。
   技术栈: xxx
   数据库: xxx
   中间件: xxx
+
+E2E 测试框架：
+  ✅ Playwright — 已安装并配置完成
+    - 配置文件: playwright.config.js
+    - 测试目录: tests/e2e/
+    - 测试命令: npm run test:e2e
+  ℹ️ 纯后端项目 — 跳过 E2E 配置
+  ℹ️ 移动端项目 — E2E 降级为人工验收
 
 修改文件（14 个）：
   ✅ CLAUDE.md — 项目信息区/命令/目录/红线

@@ -25,6 +25,7 @@ globs: ["**/*.vue", "**/*.js", "**/*.css", "**/*.scss"]
 
 6. **禁止提交 placeholder/硬编码假数据** — 质量门禁 `grep -rE "placeholder" src/` 检查
 7. **禁止提交 TODO/FIXME 残留** — 见 governance.md P0-5
+8. **调试代码输出 JSON 对象必须转字符串** — `console.log(JSON.stringify(obj))` 禁止直接 `console.log(obj)`，避免对象引用或循环引用导致输出异常或性能问题
 
 ### 路由与菜单
 

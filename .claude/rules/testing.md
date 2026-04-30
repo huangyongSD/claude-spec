@@ -34,9 +34,9 @@ globs: ["**/*Test.java", "**/*Tests.java", "**/*test*", "**/*.spec.js", "**/*.te
 | 跳过测试 | `it.skip` / `@Disabled` | 修复测试，不跳过 |
 | 只测 happy path | 只用有数据的管理员 | 必须覆盖空状态和无权限 |
 
-### E2E 测试基础设施（配置 E2E 框架后强制执行）
+### E2E 测试基础设施（强制执行）
 
-> **项目现状**：当前未配置 E2E 测试框架。以下规则在配置 Playwright 后强制执行，当前降级为人工验收。
+> **前置条件**：项目必须在初始化时通过 `/sds-init` 配置 Playwright 框架（见 sds-init SKILL.md）。E2E 测试是质量门禁的必选项，不允许降级。
 
 1. **全局错误监听** — 必须同时监听 `pageerror` 和 `console error`，断言前等待 `domcontentloaded` + 500ms
 2. **三层验证标准** — 每个测试必须验证（缺一不可）：

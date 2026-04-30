@@ -54,16 +54,21 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 > **前置条件**：需求确认后，必须先按 CLAUDE.md 的 Spec 工作流创建 `.claude/specs/<feature>/` 下的四个文件（requirements / design / test-cases / tasks），/sds-dev Skill 读取这些 Spec 作为输入。
 
-**E2E 测试框架检查（必须）**：
+**E2E 测试框架检查（强制）**：
 
-在开始编排前，检查项目是否已配置 E2E 测试框架：
+> **前置保证**：项目初始化时（`/sds-init`）已处理 E2E 框架配置，此处仅做验证。
+
+在开始编排前，检查项目 E2E 状态：
 1. 检查 `package.json` 中是否安装了 Playwright / Cypress / Nightwatch 等依赖
-2. 检查是否存在 E2E 测试配置文件（如 `playwright.config.ts`、`cypress.config.ts`）
-3. 如**未配置**：
-   - **提醒用户**：当前项目未配置 E2E 测试框架，sda-tester 阶段将跳过 E2E 测试代码编写
-   - **建议排期**：建议在 Day 30 回顾时评估 E2E 测试框架引入计划
-   - **降级方案**：E2E 测试相关的任务（T-E2E-xxx）降级为人工验收，质量门禁第 3-5 项降级处理
-   - **继续执行**：用户确认后，跳过 sda-tester 阶段的 E2E 测试部分，仅保留单元测试
+2. 检查是否存在 E2E 测试配置文件（如 `playwright.config.js`、`cypress.config.ts`）
+3. **Web 端项目**（Vue/React/Angular 等）：
+   - 如已配置 Playwright：继续执行
+   - 如未配置：**阻断执行**，提示用户先调用 `/sds-init` 配置 E2E 框架
+4. **移动端项目**（uni-app/React Native/Flutter/Taro 等）：
+   - **E2E 降级为人工验收**，不阻断执行
+   - 在 tasks.md 中标注 T-E2E 任务为"人工验收"
+5. **纯后端项目**：
+   - 跳过 E2E 相关任务，不阻断执行
 
 1. 读取需求文档（.claude/specs/*/requirements.md）
 2. 读取设计文档（.claude/specs/*/design.md）
@@ -181,7 +186,9 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-db-implementer 产出
 - 审查范围：SQL 脚本、DO 实体类、Mapper 接口
 - 审查维度：表结构完整性（对照 design.md）、字段类型正确性、索引合理性、命名规范
-- 如有问题：重新调度 sda-db-implementer 修复（附加审查报告） → 重新评审（最多 5 轮）
+- 评审通过条件：P0 问题数量 = 0
+- 如有问题：重新调度 sda-db-implementer 修复（**评审结果必须按 governance.md 评审结果传递机制完整传递，不得省略问题清单**） → 重新评审（最多 5 轮）
+- 每轮记录：当前第 X 轮评审，已解决 Y 个问题，遗留 Z 个问题
 - 通过后继续
 
 #### 阶段 2：sda-backend 调度
@@ -225,7 +232,10 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-backend 产出
 - 审查范围：VO 类、Service 接口和实现、Controller
 - 审查维度：API 完整性（对照 design.md）、参数校验、权限注解、null 返回路径、错误处理
-- 如有问题：重新调度 sda-backend 修复（附加审查报告） → 重新评审（最多 5 轮）
+- 评审通过条件：P0 问题数量 = 0
+- 如有问题：重新调度 sda-backend 修复（**评审结果必须按 governance.md 评审结果传递机制完整传递，不得省略问题清单**） → 重新评审（最多 5 轮）
+- 每轮记录：当前第 X 轮评审，已解决 Y 个问题，遗留 Z 个问题
+- 通过后继续
 
 **后端编译验证**（评审通过后执行）：
 - 运行 `mvn clean compile` 验证 Java 代码可编译
@@ -271,7 +281,10 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-frontend 产出
 - 审查范围：API 定义文件、列表页面、表单弹窗
 - 审查维度：空值守卫（?? []）、权限指令与后端同步、placeholder 残留、UI 交互完整性
-- 如有问题：重新调度 sda-frontend 修复（附加审查报告） → 重新评审（最多 5 轮）
+- 评审通过条件：P0 问题数量 = 0
+- 如有问题：重新调度 sda-frontend 修复（**评审结果必须按 governance.md 评审结果传递机制完整传递，不得省略问题清单**） → 重新评审（最多 5 轮）
+- 每轮记录：当前第 X 轮评审，已解决 Y 个问题，遗留 Z 个问题
+- 通过后继续
 
 **前端编译验证**（评审通过后执行）：
 - 运行 `yarn build:prod` 验证前端代码可编译
@@ -315,7 +328,9 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 **阶段内评审**：调用 sda-code-reviewer 评审 sda-tester 产出
 - 审查范围：单元测试代码、E2E 测试代码
 - 审查维度：测试覆盖率（对照 test-cases.md）、断言有效性、测试数据合理性、三层验证完整性
-- 如有问题：重新调度 sda-tester 修复（附加审查报告） → 重新评审（最多 5 轮）
+- 评审通过条件：P0 问题数量 = 0
+- 如有问题：重新调度 sda-tester 修复（**评审结果必须按 governance.md 评审结果传递机制完整传递，不得省略问题清单**） → 重新评审（最多 5 轮）
+- 每轮记录：当前第 X 轮评审，已解决 Y 个问题，遗留 Z 个问题
 - 通过后继续
 
 #### 阶段 5：sda-code-reviewer 全量审查调度
@@ -359,32 +374,35 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 
 #### 阶段 6：问题修复（如全量审查有问题）
 
-按问题归属重新调度对应 SDA 修复（与阶段内评审修复机制一致，附加审查报告上下文）：
+按问题归属重新调度对应 SDA 修复（与阶段内评审修复机制一致，**评审结果必须按 governance.md 评审结果传递机制完整传递，不得省略问题清单**）：
 
 ```
-你现在是 {sda-db-implementer / sda-backend / sda-frontend / sda-tester}（配置文件：.claude/agents/{对应配置文件}）。
+你是 {sda-db-implementer / sda-backend / sda-frontend / sda-tester}（配置文件：.claude/agents/{对应配置文件}）。
 
-前置：sda-code-reviewer 全量审查发现以下问题：{P0/P1 问题清单}
+前置：sda-code-reviewer 第 {N} 轮全量审查发现以下问题需要修复。
 
-前置发现：根据审查报告中的问题清单，定位需要修复的文件：
-1. 读取 design.md 第 11 节，获取对应层的预期文件路径
-2. 使用 Glob 验证文件存在，使用 Read 读取内容
-3. 结合审查报告中的文件名和行号定位具体问题位置
+【评审问题清单】
+| 文件 | 行号 | 级别 | 问题描述 | 修复建议 |
+|------|------|------|----------|----------|
+| src/xxx.java | 45 | P0 | 缺少权限注解 | 添加 @PreAuthorize("@ss.hasPermi('xxx:list')") |
 
-任务：修复审查发现的问题
+前置发现（必须执行）：
+1. 读取上述问题文件，定位问题位置
+2. 读取 design.md 第 11 节，确认该文件属于哪一层产出
+3. 如文件路径与 design.md 不一致，在修复报告中标注
 
-输入：
-- 审查报告：{sda-code-reviewer 输出}
-- 需要修复的文件：{根据问题清单确定}
+任务：修复评审发现的问题
 
 约束：
 - 一次只修一个问题，修完验证
 - 修复后不影响其他功能
-- 写文件规则：见 rules/governance.md 和对应 SDA 配置文件
 - 参考 .claude/agents/{对应配置文件} 中的规范约束执行
+- 禁止引入新问题
 
-修复完成后：重新运行测试确认通过，再重新提交 sda-code-reviewer 审查（最多 5 轮）。
-5 轮后仍有 P0/P1 问题，暂停等待人工决策。
+完成后：列出修复的具体内容和文件变更。
+
+当前进度：第 {N} 轮全量审查修复，已解决 Y 个问题，遗留 Z 个问题。
+达到 5 轮上限后仍有 P0/P1 问题，暂停等待人工决策。
 ```
 
 #### 阶段 7：质量门禁 + Git 提交
