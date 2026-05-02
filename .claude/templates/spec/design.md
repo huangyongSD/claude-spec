@@ -34,21 +34,27 @@
 
 > 必填项。新表或修改现有表的设计。
 >
-> **字符集规范**：SQL 脚本字符集声明和 Docker MySQL 执行规范详见 CLAUDE.md 数据库规范节。
+> **字符集规范**：本项目使用 PostgreSQL，字符集为 UTF-8（服务端默认），DDL 必须标注 `-- DB_TYPE: PostgreSQL`，使用双引号包裹标识符。
 
 ### 2.1 新增表
 
+> **DDL 是必填项**，每个新增表必须输出完整的 CREATE TABLE + COMMENT + CREATE INDEX SQL 语句，不得仅提供字段定义表格。
+> DDL 语法必须使用 PostgreSQL（本项目数据库），标注 `-- DB_TYPE: PostgreSQL`，使用双引号包裹标识符。
+> 字符集为 UTF-8（PostgreSQL 服务端默认），无需显式声明。
+
 #### 表：{table_name}
+
+**字段定义**：
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
-| id | BIGINT | PK, AUTO_INCREMENT | 主键 |
+| xxx_id | BIGSERIAL | PK | 主键 |
 | {字段名} | {类型} | {约束} | {说明} |
-| creator | VARCHAR(64) | | 创建者 |
-| create_time | DATETIME | NOT NULL | 创建时间 |
-| updater | VARCHAR(64) | | 更新者 |
-| update_time | DATETIME | NOT NULL | 更新时间 |
-| deleted | BIT(1) | NOT NULL DEFAULT 0 | 逻辑删除标识 |
+| create_by | VARCHAR(64) | NOT NULL DEFAULT '' | 创建者 |
+| create_time | TIMESTAMP(6) | | 创建时间 |
+| update_by | VARCHAR(64) | NOT NULL DEFAULT '' | 更新者 |
+| update_time | TIMESTAMP(6) | | 更新时间 |
+| del_flag | CHAR(1) | NOT NULL DEFAULT '0' | 逻辑删除（0-存在 2-删除） |
 
 **索引设计**：
 
@@ -56,28 +62,61 @@
 |--------|------|------|------|
 | idx_{字段} | {字段} | 普通/唯一 | {用途} |
 
+**DDL（必填）**：
+
+```sql
+-- DB_TYPE: PostgreSQL
+
+CREATE TABLE "public"."{table_name}" (
+  "{table_name}_id" bigserial,
+  -- 业务字段
+  "{字段名}" {类型} COLLATE "pg_catalog"."default" NOT NULL DEFAULT {默认值},
+  -- 审计字段
+  "create_by" varchar(64) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "create_time" timestamp(6),
+  "update_by" varchar(64) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "update_time" timestamp(6),
+  "remark" varchar(500) COLLATE "pg_catalog"."default",
+  "del_flag" char(1) NOT NULL DEFAULT '0'
+);
+COMMENT ON COLUMN "public"."{table_name}"."{table_name}_id" IS '主键';
+COMMENT ON COLUMN "public"."{table_name}"."{字段名}" IS '{说明}';
+-- ...每个字段一条 COMMENT ON COLUMN
+COMMENT ON TABLE "public"."{table_name}" IS '{表说明}';
+
+-- 索引
+CREATE INDEX "idx_{table_name}_{字段}" ON "public"."{table_name}" ("{字段}");
+```
+
 **示例**：
 ```sql
-SET NAMES utf8mb4;
-SET CHARACTER SET utf8mb4;
--- DB_TYPE: MySQL 8.0
+-- DB_TYPE: PostgreSQL
 
-CREATE TABLE `business_meeting_room` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '会议室ID',
-  `name` varchar(100) NOT NULL COMMENT '会议室名称',
-  `capacity` int NOT NULL DEFAULT 0 COMMENT '容纳人数',
-  `location` varchar(200) DEFAULT NULL COMMENT '位置',
-  `equipment` varchar(500) DEFAULT NULL COMMENT '设备信息（JSON）',
-  `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态（0禁用 1启用）',
-  `creator` varchar(64) DEFAULT '' COMMENT '创建者',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `updater` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
-  `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_name` (`name`, `tenant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会议室信息表';
+CREATE TABLE "public"."biz_meeting_room" (
+  "meeting_room_id" bigserial,
+  "name" varchar(100) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "capacity" int NOT NULL DEFAULT 0,
+  "location" varchar(200) COLLATE "pg_catalog"."default",
+  "equipment" varchar(500) COLLATE "pg_catalog"."default",
+  "status" char(1) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '1',
+  "create_by" varchar(64) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "create_time" timestamp(6),
+  "update_by" varchar(64) COLLATE "pg_catalog"."default" NOT NULL DEFAULT '',
+  "update_time" timestamp(6),
+  "remark" varchar(500) COLLATE "pg_catalog"."default",
+  "del_flag" char(1) NOT NULL DEFAULT '0'
+);
+COMMENT ON COLUMN "public"."biz_meeting_room"."meeting_room_id" IS '会议室ID';
+COMMENT ON COLUMN "public"."biz_meeting_room"."name" IS '会议室名称';
+COMMENT ON COLUMN "public"."biz_meeting_room"."capacity" IS '容纳人数';
+COMMENT ON COLUMN "public"."biz_meeting_room"."location" IS '位置';
+COMMENT ON COLUMN "public"."biz_meeting_room"."equipment" IS '设备信息（JSON）';
+COMMENT ON COLUMN "public"."biz_meeting_room"."status" IS '状态（0禁用 1启用）';
+COMMENT ON COLUMN "public"."biz_meeting_room"."del_flag" IS '逻辑删除（0-存在 2-删除）';
+COMMENT ON TABLE "public"."biz_meeting_room" IS '会议室信息表';
+
+CREATE INDEX "idx_biz_meeting_room_name" ON "public"."biz_meeting_room" ("name");
+CREATE INDEX "idx_biz_meeting_room_create_time" ON "public"."biz_meeting_room" ("create_time");
 ```
 
 ### 2.2 修改表
@@ -92,10 +131,12 @@ CREATE TABLE `business_meeting_room` (
 > 必填项。数据库变更必须提供回滚方案。
 
 ```sql
+-- DB_TYPE: PostgreSQL
 -- 回滚脚本（幂等执行）
-DROP TABLE IF EXISTS `business_meeting_room`;
+
+DROP TABLE IF EXISTS "public"."biz_meeting_room";
 -- 或修改表的回滚
--- ALTER TABLE `xxx` DROP COLUMN `new_field`;
+-- ALTER TABLE "public"."xxx" DROP COLUMN "new_field";
 ```
 
 ## 3. API 设计
@@ -235,13 +276,65 @@ DROP TABLE IF EXISTS `business_meeting_room`;
 ## 5. 前端设计
 
 > 必填项。前端页面、组件、路由、菜单的设计。
+> 
+> **plan→design 迁移约束**：§5.1 必须包含 plan.md 中所有页面的入口说明和 ASCII 布局图。
+> plan.md 中与用户确认的页面布局是设计决策，design.md 必须完整继承，不得降级为一行文字描述。
+> 迁移后 plan.md 中的布局内容仍保留（作为需求讨论记录），design.md 是开发者的唯一参考文档。
 
 ### 5.1 页面设计
 
-| 页面 | 路由 | 组件 | 对应 AC | 说明 |
+> **每个页面必须包含**：①入口说明（从哪个菜单/按钮进入）②ASCII 布局图 ③交互说明
+>
+> **入口说明格式**：`侧边栏菜单 → 一级菜单 → 二级菜单` 或 `列表页 → 点击"XX"按钮 → 弹窗`
+>
+> **ASCII 布局图要求**：
+> - 展示页面的区域划分（搜索区/表格区/弹窗/左右分栏等）
+> - 标注关键 UI 元素（按钮/下拉/Tab/表单字段/工具栏等）
+> - 对于弹窗/面板，说明触发条件（点击哪个按钮弹出）
+> - 对于多状态页面（如提交态/查看态），分别画布局图
+
+| 页面 | 路由 | 组件 | 对应 AC | 入口 |
 |------|------|------|---------|------|
-| 会议室列表 | /business/meeting-room | views/business/meeting-room/index.vue | AC-001 | 搜索 + 表格 + 分页 |
-| 会议室表单 | — | views/business/meeting-room/MeetingRoomForm.vue | AC-001 | 新增/编辑弹窗 |
+| {页面名称} | {路由路径} | {组件路径} | AC-xxx | {从哪个菜单/按钮进入} |
+
+> 菜单层级：{一级菜单}（1个侧边栏菜单项）→ {二级菜单1} / {二级菜单2} / ...（N个子菜单）
+> {弹窗/面板}不需要单独菜单，从列表页入口进入
+
+#### 5.1.1 {页面名称}
+
+> **页面布局：** {参照现有XX页面风格 / 核心布局原则}
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ {面包屑/标题}                                            │
+│                                                          │
+│ ┌─ 搜索条件 ──────────────────────────────────────────┐ │
+│ │ {筛选字段/按钮}                                      │ │
+│ └───────────────────────────────────────────────────┘  │
+│                                                          │
+│ ┌─ 操作+内容区 ──────────────────────────────────────┐ │
+│ │ {表格/卡片/表单/分栏布局}                            │ │
+│ └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+**{弹窗/面板名称}**（{触发条件}）：
+
+```
+┌───────────────────────────────────────────────────────┐
+│ {弹窗标题}                                       [×] │
+│ ┌───────────────────────────────────────────────────┐ │
+│ │ {表单字段/内容区域}                                │ │
+│ │                                                   │ │
+│ │ [取消]                                [确定]      │ │
+│ └───────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────┘
+```
+
+- {交互说明1}
+- {交互说明2}
+
+#### 5.1.2 {下一个页面...}
 
 ### 5.2 菜单配置
 
@@ -358,8 +451,8 @@ end
 
 | 文件类型 | 文件路径 | 关键内容 |
 |----------|---------|---------|
-| SQL（建表） | sql/{TABLE_NAME}.sql | 建表脚本（含 `SET NAMES utf8mb4` + `-- DB_TYPE: MySQL 8.0`） |
-| SQL（回滚） | sql/{TABLE_NAME}_rollback.sql | 回滚脚本（幂等执行） |
+| SQL（建表） | sql/{TABLE_NAME}.sql | 建表 DDL（含 `-- DB_TYPE: PostgreSQL` + COMMENT + INDEX） |
+| SQL（回滚） | sql/{TABLE_NAME}_rollback.sql | 回滚脚本（幂等执行，DROP TABLE IF EXISTS） |
 | DO | {entity_package}/{ClassName}DO.java | 实体类（字段清单） |
 | Mapper | {mapper_package}/{ClassName}Mapper.java | `extends BaseMapper<{ClassName}DO>` |
 
@@ -384,8 +477,8 @@ end
 | 菜单 SQL | sql/{MODULE}_menu.sql | sys_menu 插入语句（一级菜单 path 以 `/` 开头） |
 
 **示例**：
-| SQL | sql/business_meeting_room.sql | 建表脚本（含 SET NAMES utf8mb4 + DB_TYPE） |
-| SQL（回滚） | sql/business_meeting_room_rollback.sql | DROP TABLE IF EXISTS |
+| SQL | sql/biz_meeting_room.sql | 建表 DDL（含 DB_TYPE: PostgreSQL + COMMENT + INDEX） |
+| SQL（回滚） | sql/biz_meeting_room_rollback.sql | DROP TABLE IF EXISTS "public"."biz_meeting_room" |
 | DO | entity/business/MeetingRoomDO.java | 字段：id, name, capacity, location, status |
 | Mapper | mapper/business/MeetingRoomMapper.java | `extends BaseMapper<MeetingRoomDO>` |
 | SaveReqVO | vo/business/MeetingRoomSaveReqVO.java | name(必填), capacity(必填), location, equipment |

@@ -58,10 +58,19 @@ RuoYi-Vue-Postgresql/
 ### 新功能开发（强制）
 
 ```
-沟通任务 → /sds-spec → Spec 评审 → /sds-dev → 编译验证 → Git 提交
+沟通任务(确认需求+页面布局) → /sds-spec(plan→design迁移) → Spec 评审 → /sds-dev → 编译验证 → Git 提交
 ```
 
 **豁免条件**：用户说"直接改"/"不用规划"，或单文件小改动（bug 修复、配置调整）
+
+### plan→design 迁移约束（强制）
+
+> plan.md 中与用户确认的页面布局、入口说明是设计决策，`/sds-spec` 生成 design.md 时必须完整继承。
+
+1. **design.md §5.1 必须包含 plan.md 中所有页面的入口说明和 ASCII 布局图**
+2. **禁止信息降级**：不得将 plan.md 的 ASCII 布局图压缩为一行文字描述（如"搜索+表格+分页"）
+3. **覆盖度校验**：生成 design.md 后，逐项检查 plan.md 中每个页面布局是否在 design.md §5.1 中有对应描述，输出缺失项清单
+4. **plan.md 原文保留**：迁移后 plan.md 中的布局内容仍保留（作为需求讨论记录），design.md 是开发者的唯一参考文档
 
 ### 高风险操作（必须先 Plan）
 

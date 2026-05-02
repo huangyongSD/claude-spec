@@ -178,10 +178,11 @@ SELECT COUNT(*) FROM "public"."table_name" WHERE "new_field" IS NULL;
    - 必须展示 Domain 类搜索结果作为表名来源证明
    - 新建表名必须符合现有命名模式
 
-### SQL 脜本规范
-> 本项目使用 PostgreSQL，字符集为 UTF-8（服务端默认），以下为 SQL 模板：
+### SQL 脚本规范
+> 本项目使用 PostgreSQL，字符集为 UTF-8（服务端默认），SQL 脚本保存到 `.claude/specs/<feature>/sql/` 目录。以下为 SQL 模板：
 ```sql
 -- DB_TYPE: PostgreSQL
+-- 保存路径：.claude/specs/{feature}/sql/xxx.sql
 
 CREATE TABLE "public"."table_name" (
   "table_name_id" bigserial,
@@ -291,9 +292,11 @@ python .claude/tools/db-query.py --query "SELECT indexname, indexdef FROM pg_ind
 
 | 类型 | 文件路径 | 说明 |
 |------|----------|------|
-| SQL | sql/xxx.sql | 建表脚本（PostgreSQL） |
+| SQL | .claude/specs/{feature}/sql/xxx.sql | 建表脚本（PostgreSQL），保存到 Spec 目录 |
 | Domain | domain/XxxDomain.java | 实体类 |
 | Mapper | mapper/XxxMapper.java | Mapper 接口 |
+
+> **SQL 输出路径**：SQL 脚本必须保存到 `.claude/specs/<feature>/sql/` 目录，而非项目根目录的 `sql/` 目录。{feature} 为功能名称（小写）。
 
 ## 写文件规则
 

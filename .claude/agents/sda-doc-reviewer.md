@@ -167,6 +167,9 @@ tools: Read, Grep, Glob, SearchCodebase
 | 表结构 | 字段类型是否正确 | 严重 |
 | 表结构 | 约束条件是否完整（NULL/NOT NULL/DEFAULT） | 严重 |
 | 表结构 | 索引是否合理（高频查询字段） | 中等 |
+| 表结构 | **DDL 是否输出（每个新增表必须有 CREATE TABLE + COMMENT + CREATE INDEX，不得仅提供字段定义表格）** | 严重 |
+| 表结构 | **DDL 语法是否为 PostgreSQL（标注 `-- DB_TYPE: PostgreSQL`，双引号标识符）** | 严重 |
+| 表结构 | **DDL 审计字段是否与项目规范一致（create_by/create_time/update_by/update_time/del_flag/remark）** | 严重 |
 | 表结构 | 回滚脚本是否存在且幂等 | 严重 |
 | API 设计 | 接口是否完整（对照 AC 需求） | 严重 |
 | API 设计 | 请求/响应参数是否完整 | 严重 |

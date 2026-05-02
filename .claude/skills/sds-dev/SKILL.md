@@ -170,7 +170,7 @@ description: 全栈开发编排，按 sda-db+sda-backend→sda-frontend→sda-te
 - 文件产出清单：design.md 第 11 节
 
 输出：
-- SQL 脚本：创建数据库表（含 SET NAMES utf8mb4 + -- DB_TYPE: MySQL 8.0）
+- SQL 脚本：创建数据库表（含 SET NAMES utf8mb4 + -- DB_TYPE: PostgreSQL），**保存到 `.claude/specs/<feature>/sql/` 目录**
 - 回滚脚本：幂等回滚 SQL
 - DO 实体类：对应数据库表的实体
 - Mapper 接口：MyBatis Mapper

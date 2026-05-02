@@ -130,16 +130,32 @@ description: 需求规划与风险评估，输出修改计划后再执行
 - 测试：[用例数]
 ```
 
+## Plan 持久化（强制）
+
+**Plan 确认后必须保存为文件**，作为 `/sds-spec` 的必读输入和回溯验证基准：
+
+```
+.claude/specs/{feature}/plan.md
+```
+
+保存时机：用户确认 Plan 后、触发 `/sds-spec` 之前。
+
+保存内容：将 Plan 输出的全部 6 个章节原样写入文件（需求复述、影响范围、修改步骤、风险评估、验收标准、预估工作量），不得摘要、不得省略。
+
+> **为什么**：对话上下文会被压缩，SDA agent 看不到对话历史。plan.md 是 Plan 信息传递到 Spec 的唯一可靠通道。
+
 ## 后续流程
 
 **Plan 确认后自动调用 Spec**：
 
-用户确认 Plan 后，AI 应自动调用 `/sds-spec` Skill 创建 Spec 文件，无需用户再次手动触发。
+用户确认 Plan 后，AI 先保存 plan.md，再自动调用 `/sds-spec` Skill 创建 Spec 文件，无需用户再次手动触发。
 
 ```
 用户说"确认"、"好的"、"可以"、"继续"等确认词
     ↓
-AI 自动调用 /sds-spec
+AI 保存 Plan 到 .claude/specs/{feature}/plan.md
+    ↓
+AI 自动调用 /sds-spec（spec 将读取 plan.md 作为输入）
     ↓
 创建 .claude/specs/<feature>/ 下的四个文件
 ```

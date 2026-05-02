@@ -195,7 +195,8 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 | 文件 | 路径 | 内容 |
 |------|------|------|
 | design.md | .claude/specs/{name}/ | 完整设计文档（含需求分析、数据流、接口、API、Schema） |
-| schema.sql | .claude/specs/{name}/ | DDL 语句（CREATE TABLE / INDEX） |
+| DDL（design.md §2 内嵌） | .claude/specs/{name}/design.md §2 | 每个新增表的完整 CREATE TABLE + COMMENT + CREATE INDEX（必填，不得仅提供字段定义表格） |
+| schema.sql | .claude/specs/{name}/ | DDL 语句的独立文件（可选，与 design.md §2 DDL 一致时可作为独立脚本执行） |
 | api.yaml | .claude/specs/{name}/ | OpenAPI 规范（可选，用于 API 管理工具） |
 
 ## 设计评审检查清单
