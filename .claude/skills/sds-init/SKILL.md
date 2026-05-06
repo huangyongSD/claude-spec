@@ -28,7 +28,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 ## 工作流程
 
 ```
-第一步：扫描项目信息（含登录接口与鉴权检测）→ 第二步：E2E 框架自动配置 → 第三步：展示扫描结果供用户确认 → 第四步：Edit 替换 15 个配置文件 → 第五步：审批通用配置文件 → 第六步：评审验证 → 第七步：最终报告
+第一步：扫描项目信息（含登录接口与鉴权检测）→ 第二步：E2E 框架自动配置 → 第三步：展示扫描结果供用户确认 → 第四步：Edit 替换 16 个配置文件（含 secrets.json）→ 第五步：审批通用配置文件 → 第六步：评审验证 → 第七步：最终报告
 ```
 
 ---
@@ -349,11 +349,36 @@ npx playwright test --version
 
 ---
 
-## 第四步：Edit 替换 15 个配置文件
+## 第四步：Edit 替换 16 个配置文件（含 secrets.json）
+
+> **强制要求**：secrets.json 必须与项目数据库、中间件配置保持一致，这是 sds-dbquery 等工具正常运行的前提。
 
 逐文件逐段落 Edit，只替换项目信息段落，不触碰规则/治理/流程内容。
 
 ### 替换文件清单及段落
+
+#### 0. .claude/tools/secrets.json（强制更新）
+
+> **此文件关系到 db-query.py 等工具能否正常运行，必须与项目配置一致。**
+
+替换字段（从 application*.yml 扫描获取）：
+- `db_master_url` → 从 `spring.datasource.druid.master.url` 提取完整 JDBC URL（必须保留 `currentSchema`、`characterEncoding` 等参数）
+- `db_master_host` → 从 JDBC URL 解析 host
+- `db_master_port` → 从 JDBC URL 解析 port
+- `db_master_name` → 从 JDBC URL 解析 dbname（如 `digital_housing`）
+- `db_master_schema` → 从 JDBC URL 的 `currentSchema=` 参数提取（如未指定则为 public）
+- `db_master_user` → 从 `spring.datasource.druid.master.username` 提取
+- `db_master_password` → 从 `spring.datasource.druid.master.password` 提取
+- `db_slave_*` → 从 `spring.datasource.druid.slave` 提取（如未启用则留空）
+- `redis_host` → 从 `spring.redis.cluster.nodes` 或 `spring.redis.host` 提取
+- `redis_port` → 从 `spring.redis.cluster.nodes` 提取（如为集群，取第一个节点的 port）
+- `redis_password` → 从 `spring.redis.password` 提取（如无密码则留空）
+- `rabbit_host` → 从 `rocketmq.name-server` 或 `spring.rabbitmq.*` 提取
+- `rabbit_port` → 从 `rocketmq.name-server` 或 `spring.rabbitmq.*` 提取
+
+> **注意**：
+> - secrets.json 中 `real_values` 和 `placeholders` 的对应字段必须同步更新
+> - `db_master_url` 必须完整保留原始参数（currentSchema、characterEncoding、serverTimezone 等），不得截断
 
 #### 1. CLAUDE.md（根目录）
 
@@ -602,13 +627,185 @@ npx playwright test --version
 
 ## 第五步：审批通用配置文件
 
-审批 settings.json、hooks/*.ps1、tools/*.py 是否符合当前项目技术栈和项目结构，不符合则修改。
+审批 settings.json、hooks/*.ps1、tools/*.py、secrets.json 是否符合当前项目技术栈和项目结构，不符合则修改。
 
 - Read: `.claude/settings.json` → 检查 allow 列表是否覆盖当前项目的命令（Bash 允许 mvn/npm/git/node/python 等）
 - Glob: `.claude/hooks/*.ps1` → 读取每个 ps1 脚本，检查是否涉及项目特有的路径/命令
 - Glob: `.claude/tools/*.py` → 读取每个 py 工具，检查是否涉及项目特有的路径/框架
+- **Read: `.claude/tools/secrets.json` → 验证数据库类型是否与项目一致**
+  - 检查 `db_master_url` 的 JDBC 前缀：`jdbc:mysql://` / `jdbc:postgresql://` / `jdbc:highgo://`
+  - 如 db-query.py 使用 psycopg2，则 `db_master_url` 必须为 PostgreSQL 兼容格式
+  - 如 db-query.py 使用 pymysql，则 `db_master_url` 必须为 MySQL 格式
+  - 如不匹配，Edit 修正 secrets.json 并更新 db-query.py 的连接参数
 
 发现不符合 → Edit 修正。
+
+### 5.1 JDBC URL 参数同步（强制）
+
+> **问题背景**：JDBC URL 中的 `currentSchema`、`characterEncoding`、`serverTimezone` 等参数直接影响数据库连接和字符编码。db-query.py 必须完整保留这些参数，否则可能导致连接失败或中文乱码。
+
+**强制要求**：所有项目的 db-query.py 必须支持从 JDBC URL 解析完整参数。
+
+**处理流程**：
+
+1. **从 JDBC URL 解析完整参数**
+   - 提取数据库类型（mysql/postgresql/highgo/kingbase/dm）
+   - 提取 `currentSchema` → schema 名称
+   - 提取 `characterEncoding` → 字符编码
+   - 提取 `serverTimezone` → 时区
+   - 提取其他关键参数（如 `useUnicode`、`allowMultiQueries`）
+
+2. **修改 db-query.py 支持 schema 和编码参数**
+
+   在 `get_secrets_url_config()` 函数中解析参数：
+
+   ```python
+   def get_secrets_url_config(secrets):
+       real = secrets["real_values"]
+       full_url = real.get("db_master_url", "")
+
+       # 通用匹配：jdbc:数据库类型://host:port/database?params
+       match = re.match(r'jdbc:([^:]+)://([^/:]+):(\d+)/([^?]+)\??(.*)', full_url)
+       if not match:
+           return None
+
+       db_type = match.group(1)      # mysql / postgresql / highgo / kingbase / dm
+       host = match.group(2)
+       port = int(match.group(3))
+       database = match.group(4)
+       params = match.group(5)
+
+       # 解析 schema 从 currentSchema 参数
+       schema = None
+       for param in params.split('&'):
+           if param.startswith('currentSchema='):
+               schema = param.split('=')[1]
+               break
+
+       return {
+           "db_type": db_type,
+           "host": host,
+           "port": port,
+           "database": database,
+           "schema": schema,
+           "user": real["db_master_user"],
+           "password": real["db_master_password"],
+           "full_url": full_url  # 保留完整 URL
+       }
+   ```
+
+   在 `build_jdbc_url()` 中优先使用完整 URL：
+
+   ```python
+   def build_jdbc_url(config):
+       # 使用完整 URL（保留所有参数）
+       if "full_url" in config:
+           return config["full_url"]
+
+       # 回退：手动拼接
+       host = config["host"]
+       port = config["port"]
+       database = config["database"]
+       schema = config.get("schema")
+
+       url = f"jdbc:{config.get('db_type', 'postgresql')}://{host}:{port}/{database}"
+       if schema:
+           url += f"?currentSchema={schema}"
+       return url
+   ```
+
+   根据数据库类型选择 JDBC driver：
+
+   ```python
+   # 根据数据库类型选择 JDBC driver
+   DRIVER_MAP = {
+       "mysql": "com.mysql.cj.jdbc.Driver",
+       "postgresql": "org.postgresql.Driver",
+       "highgo": "com.highgo.jdbc.Driver",
+       "kingbase": "com.kingbase.Driver",
+       "dm": "dm.jdbc.driver.DmDriver",
+   }
+
+   def get_driver_class(db_type):
+       return DRIVER_MAP.get(db_type, "org.postgresql.Driver")  # 默认 PostgreSQL
+   ```
+
+3. **更新 secrets.json 中的配置**
+   - 确保 `db_master_url` 完整保留原始参数
+   - `db_master_schema` → 从 JDBC URL 的 `currentSchema=` 参数提取（如未指定则为 public）
+
+4. **验证连接**
+
+   执行测试查询验证连接正常且无乱码：
+   ```bash
+   python .claude/tools/db-query.py --query "SELECT xmdm FROM prjsys.project_info LIMIT 1"
+   ```
+
+---
+
+### 5.2 Windows 中文路径下 hooks 脚本处理（Windows 专用）
+
+> **问题背景**：PowerShell 在解析含中文字符的路径时存在编码问题，导致 hooks 脚本执行失败（报错：无法识别文件格式或路径不存在）。项目路径含中文（如 `C:/Users/xxx/Desktop/住建厅/数据治理/`）时，`.claude/hooks/*.ps1` 的相对路径会触发此问题。
+
+**检测条件**：当前系统为 Windows（`platform: win32`）且项目路径包含非 ASCII 字符。
+
+**处理流程**：
+
+1. **检测项目路径是否含中文**
+   - 检查项目根目录路径是否包含非 ASCII 字符（如中文、日文、特殊符号）
+   - Windows 可用 `echo $PWD | grep -P '[^\x00-\x7F]'` 检测
+
+2. **如项目路径含中文，执行以下步骤**
+
+   #### 5.2.1 创建 ASCII 路径目录
+
+   询问用户输入一个纯 ASCII 路径（如 `C:/Users/andyh/.claude/hooks-scripts`），用于存放 hooks 脚本。
+
+   > **提示**：推荐使用 `~/.claude/hooks-scripts`（即 `C:/Users/<用户名>/.claude/hooks-scripts`），这是 Claude Code 全局配置目录，不随项目路径变化。
+
+   使用 `mkdir -p "<用户输入的路径>"` 创建目录。
+
+   #### 5.2.2 复制 hooks 脚本到新位置
+
+   从 `.claude/hooks/*.ps1` 读取所有 ps1 脚本内容，复制到新目录。
+
+   **关键修改**：每个脚本中 `$secretsPath` 的相对路径引用改为绝对路径：
+   ```powershell
+   # 原（相对路径，会受工作目录中文影响）：
+   $secretsPath = Join-Path $PSScriptRoot "..\tools\secrets.json"
+
+   # 改为（绝对路径，绕过中文路径问题）：
+   $secretsPath = "C:/Users/<用户名>/.claude/tools/secrets.json"
+   ```
+
+   > **注意**：脚本中如有 `param()` 声明，保留不动；仅修改路径相关变量。
+
+   #### 5.2.3 更新 settings.json 中的 hooks 引用
+
+   将 `.claude/settings.json` 中所有 hooks 的 `command` 路径从相对路径改为绝对路径：
+   ```json
+   // 改前（相对路径，含 .claude/hooks/）
+   "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-sensitive-read.ps1"
+
+   // 改后（绝对路径，指向 ASCII 目录）
+   "command": "powershell -ExecutionPolicy Bypass -File \"C:/Users/xxx/.claude/hooks-scripts/post-sensitive-read.ps1\""
+   ```
+
+   涉及的文件：
+   - `pre-bash-check.ps1`
+   - `post-sensitive-read.ps1`
+   - `post-sensitive-scan.ps1`
+   - `post-edit-check.ps1`
+
+   #### 5.2.4 验证 hooks 可执行
+
+   运行测试命令验证：
+   ```bash
+   powershell -ExecutionPolicy Bypass -File "<新路径>/pre-bash-check.ps1" < /dev/null; echo "Exit: $?"
+   ```
+   预期输出：`Exit: 0`（无错误）
+
+3. **如项目路径为纯 ASCII，跳过上述步骤**，hooks 脚本保持在 `.claude/hooks/` 原位不动。
 
 ---
 
@@ -624,6 +821,7 @@ Read 所有 15 个被修改的文件，逐文件验证替换内容。
 
 - 技术栈描述 ↔ pom.xml/package.json 版本号一致？
 - 数据库类型 ↔ JDBC URL 一致？
+- **secrets.json 数据库配置 ↔ application*.yml 中的实际配置一致？**
 - 中间件描述 ↔ pom.xml 依赖 + YAML 配置一致？
 - 目录结构 ↔ 实际文件系统一致？
 - 命令 ↔ package.json scripts 一致？
@@ -639,6 +837,13 @@ Read 所有 15 个被修改的文件，逐文件验证替换内容。
 - sda-frontend 的组件模式 ↔ 实际 Vue 代码一致？
 - sda-tester 的 stubs ↔ 实际组件一致？
 - security.md 的 ORM 检查 ↔ 项目实际 ORM 一致？
+- **db-query.py 的 JDBC driver ↔ secrets.json 的数据库类型一致？**
+  - com.mysql.cj.jdbc.Driver → MySQL
+  - org.postgresql.Driver → PostgreSQL
+  - com.highgo.jdbc.Driver → HighGo
+  - com.kingbase.Driver → Kingbase
+  - dm.jdbc.driver.DmDriver → DM（达梦）
+  - 不一致则标记为 P0 问题，必须修复
 
 ### 6.4 修正
 
@@ -683,7 +888,8 @@ E2E 测试框架：
   ℹ️ 纯后端项目 — 跳过 E2E 配置
   ℹ️ 移动端项目 — E2E 降级为人工验收
 
-修改文件（15 个）：
+修改文件（16 个）：
+  ✅ secrets.json — 数据库/中间件连接配置（强制）
   ✅ CLAUDE.md — 项目信息区/命令/目录/红线
   ✅ structure.md — 目录树/导航/ADR
   ✅ dbinfo.md — charset/方言/DB类型
@@ -700,12 +906,15 @@ E2E 测试框架：
   ✅ sda-build-error-resolver.md — 框架/命令
   ✅ auth.md — 登录接口/鉴权方式/测试账号/认证流程
 
-已审批通用配置文件（3 类）：
+已审批通用配置文件（4 类）：
   ✅ settings.json — allow 列表
-  ✅ *.ps1 hooks — 路径/命令适配
+  ✅ *.ps1 hooks — 路径/命令适配（Windows 中文路径已迁移至 ASCII 目录）
   ✅ *.py tools — 路径/框架适配
+  ✅ secrets.json — 数据库/中间件配置一致性
 
 评审验证：
+  ✅ secrets.json ↔ application*.yml 数据库配置一致
+  ✅ db-query.py 连接库 ↔ secrets.json 数据库类型一致
   ✅ 全部交叉验证通过
 
 需用户手动确认的信息：

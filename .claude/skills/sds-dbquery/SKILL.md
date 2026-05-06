@@ -51,42 +51,51 @@ python .claude/tools/db-query.py --confirm --query "SHOW TABLES"
 python .claude/tools/db-query.py --query "{args}" --format table --limit 50
 ```
 
-## 常用查询示例
+## Schema 配置
 
-### 查看所有表
+连接信息从 secrets.json 的 `db_master_url` 中自动解析 `currentSchema` 参数。
+如需指定其他 schema，可在查询中使用 `schema.table` 格式：
 
 ```bash
-python .claude/tools/db-query.py --query "SHOW TABLES" --format table
+python .claude/tools/db-query.py --query "SELECT * FROM prjsys.project_info LIMIT 1" --format table
+```
+
+## 常用查询示例
+
+### 查看 schema 下的所有表
+
+```bash
+python .claude/tools/db-query.py --query "SELECT tablename FROM pg_tables WHERE schemaname = 'prjsys'" --format table
 ```
 
 ### 查看表结构
 
 ```bash
-python .claude/tools/db-query.py --query "DESC t_user" --format table
+python .claude/tools/db-query.py --query "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 't_user'" --format table
 ```
 
 ### 查看索引
 
 ```bash
-python .claude/tools/db-query.py --query "SHOW INDEX FROM t_user" --format table
+python .claude/tools/db-query.py --query "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 't_user'" --format table
 ```
 
 ### 查看表字符集
 
 ```bash
-python .claude/tools/db-query.py --query "SHOW CREATE TABLE t_user" --format table
+python .claude/tools/db-query.py --query "SELECT charset, collation FROM information_schema.tables WHERE table_name = 't_user'" --format table
 ```
 
 ### 查询数据量
 
 ```bash
-python .claude/tools/db-query.py --query "SELECT COUNT(*) FROM t_user" --format table
+python .claude/tools/db-query.py --query "SELECT COUNT(*) FROM prjsys.t_user" --format table
 ```
 
 ### 按条件查询
 
 ```bash
-python .claude/tools/db-query.py --query "SELECT id, name, status FROM t_user WHERE deleted = 0 LIMIT 10" --format table
+python .claude/tools/db-query.py --query "SELECT id, name, status FROM prjsys.t_user WHERE deleted = 0 LIMIT 10" --format table
 ```
 
 ## 输出格式
@@ -97,6 +106,22 @@ python .claude/tools/db-query.py --query "SELECT id, name, status FROM t_user WH
 |------|------|----------|
 | `table` | 表格格式（默认） | 人工查看 |
 | `json` | JSON 格式 | 程序处理 |
+
+## 常见问题
+
+### 中文乱码
+如查询结果出现中文乱码，检查 secrets.json 中 `db_master_url` 是否包含 `characterEncoding=UTF-8` 参数，并确认 db-query.py 已正确解析该参数。
+
+### 连接失败
+如连接失败，检查：
+1. secrets.json 中 `db_master_url` 是否完整包含 `currentSchema` 参数
+2. 目标 schema 是否存在
+3. 数据库服务是否可访问
+
+### 表不存在
+如提示 "relation does not exist"：
+1. 确认表名拼写正确
+2. 检查是否需要添加 schema 前缀（如 `prjsys.table_name`）
 
 ## 注意事项
 
