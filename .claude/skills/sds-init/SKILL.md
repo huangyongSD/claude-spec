@@ -655,7 +655,30 @@ npx playwright test --version
    - 提取 `serverTimezone` → 时区
    - 提取其他关键参数（如 `useUnicode`、`allowMultiQueries`）
 
-2. **修改 db-query.py 支持 schema 和编码参数**
+2. **询问用户提供本地数据库驱动 jar 路径**
+   
+   > **重要**：不同项目的数据库驱动可能不同（如 HighGo/PostgreSQL/MySQL 等），必须询问用户提供本地的 JDBC driver jar 路径。
+
+   使用 AskUserQuestion 询问：
+   - 数据库驱动 jar 路径（如 `C:/Users/xxx/.m2/repository/com/highgo/hgdb-pgjdbc/42.5.0/hgdb-pgjdbc-42.5.0.jar`）
+   - 验证路径是否存在
+
+3. **检查 settings.json 中的 JAVA17_HOME 路径**
+   
+   > **重要**：db-query.py 依赖 JAVA_HOME 环境变量执行 JDBC 连接。如果 settings.json 中配置的 JAVA17_HOME 路径不存在，会导致连接失败。
+
+   - 读取 settings.json 检查 JAVA17_HOME 配置
+   - 如配置了路径但本地不存在，使用 AskUserQuestion 要求用户输入新的 ASCII 路径
+   - 路径要求：不包含中文、特殊字符（仅允许字母、数字、冒号、反斜杠、点号、下划线、连字符、空格）
+   - 推荐路径：`C:/tools/java/jdk-17.0.12` 或 `C:/Program Files/Java/jdk-17`
+
+   验证路径存在性：
+   ```bash
+   # 检查路径是否存在
+   ls "<用户提供的路径>" 2>/dev/null || echo "路径不存在"
+   ```
+
+4. **修改 db-query.py 支持 schema 和编码参数**
 
    在 `get_secrets_url_config()` 函数中解析参数：
 
@@ -714,31 +737,47 @@ npx playwright test --version
        return url
    ```
 
-   根据数据库类型选择 JDBC driver：
+   修改 `get_jdbc_jars()` 支持固定驱动路径：
 
    ```python
-   # 根据数据库类型选择 JDBC driver
+   # Fixed JDBC driver path（从用户输入获取）
+   JDBC_FIXED_JAR = "<用户提供的jar路径>"
+
+   def get_jdbc_jars(db_type="postgresql"):
+       """Find JDBC jar files from local Maven repository based on database type."""
+       # Use fixed driver if available and exists
+       if os.path.exists(JDBC_FIXED_JAR):
+           return [JDBC_FIXED_JAR]
+       # ... otherwise search Maven repo
+   ```
+
+   根据数据库类型选择 JDBC driver class：
+
+   ```python
+   # 根据数据库类型选择 JDBC driver class
    DRIVER_MAP = {
        "mysql": "com.mysql.cj.jdbc.Driver",
-       "postgresql": "org.postgresql.Driver",
-       "highgo": "com.highgo.jdbc.Driver",
+       "postgresql": "org.postgresql.Driver",  # HighGo 也使用此驱动类名
        "kingbase": "com.kingbase.Driver",
        "dm": "dm.jdbc.driver.DmDriver",
    }
 
-   def get_driver_class(db_type):
-       return DRIVER_MAP.get(db_type, "org.postgresql.Driver")  # 默认 PostgreSQL
+   def get_driver_class(db_type, jdbc_driver):
+       # 如果使用固定驱动，HighGo/PostgreSQL 都用 org.postgresql.Driver
+       if jdbc_driver and "highgo" in jdbc_driver.lower():
+           return "org.postgresql.Driver"
+       return DRIVER_MAP.get(db_type, "org.postgresql.Driver")
    ```
 
-3. **更新 secrets.json 中的配置**
+5. **更新 secrets.json 中的配置**
    - 确保 `db_master_url` 完整保留原始参数
    - `db_master_schema` → 从 JDBC URL 的 `currentSchema=` 参数提取（如未指定则为 public）
 
-4. **验证连接**
+6. **验证连接**
 
    执行测试查询验证连接正常且无乱码：
    ```bash
-   python .claude/tools/db-query.py --query "SELECT xmdm FROM prjsys.project_info LIMIT 1"
+   python .claude/tools/db-query.py --query "SELECT version()"
    ```
 
 ---
@@ -755,7 +794,16 @@ npx playwright test --version
    - 检查项目根目录路径是否包含非 ASCII 字符（如中文、日文、特殊符号）
    - Windows 可用 `echo $PWD | grep -P '[^\x00-\x7F]'` 检测
 
-2. **如项目路径含中文，执行以下步骤**
+2. **检查 settings.json 中配置的路径是否存在**
+
+   > **重要**：settings.json 中可能配置了 JAVA17_HOME 等路径，必须检查这些路径在本地是否存在。
+
+   - 读取 settings.json 检查配置的路径（如 JAVA17_HOME）
+   - 如配置了路径但本地不存在，使用 AskUserQuestion 要求用户输入新的 ASCII 路径
+   - **路径要求**：不包含中文、特殊字符（仅允许字母、数字、冒号、反斜杠、点号、下划线、连金属，空格）
+   - 验证路径存在性：`ls "<用户提供的路径>"` 或 `test -d "<路径>"`
+
+   **如项目路径含中文且需要迁移 hooks 脚本，执行以下步骤**
 
    #### 5.2.1 创建 ASCII 路径目录
 
