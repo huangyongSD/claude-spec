@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Read-only database query tool (PostgreSQL).
+Read-only database query tool (PostgreSQL/HighGo via JDBC).
 
 Only SELECT queries are allowed. SHOW/DESC equivalents use information_schema.
 Connection info is read from .claude/tools/secrets.json.
@@ -12,11 +13,20 @@ import os
 import re
 import sys
 
+# Force UTF-8 encoding for output (fix Chinese character display)
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 try:
-    import psycopg2
+    import jaydebeapi
 except ImportError:
-    print("ERROR: psycopg2 is not installed. Run: pip install -r .claude/tools/requirements.txt")
+    print("ERROR: jaydebeapi is not installed. Run: pip install jaydebeapi")
     sys.exit(1)
+
+# Java 17 path for JDBC driver
+JAVA17_HOME = "C:/tools/java/jdk-17.0.12"
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,6 +41,18 @@ BLOCKED_KEYWORDS = re.compile(
 
 # Single-statement check: no semicolons except at the very end
 MULTI_STATEMENT_PATTERN = re.compile(r';\s*\S', re.IGNORECASE)
+
+# Database type to JDBC driver mapping
+DB_DRIVER_MAP = {
+    "postgresql": ("org.postgresql.Driver", "jdbc:postgresql://"),
+    "highgo": ("com.highgo.jdbc.Driver", "jdbc:highgo://"),
+}
+
+# JDBC jar file patterns
+DB_JAR_PATTERNS = {
+    "postgresql": ["postgresql", "pg_jdbc"],
+    "highgo": ["HgdbJdbc"],
+}
 
 
 def load_secrets():
@@ -47,8 +69,63 @@ def load_secrets():
         sys.exit(1)
 
 
+def get_secrets_url_config(secrets):
+    """Extract full URL and parse host/port/database/schema from db_master_url."""
+    real = secrets["real_values"]
+    full_url = real.get("db_master_url", "")
+
+    # Detect database type from URL prefix
+    db_type = None
+    for dtype, (driver_class, url_prefix) in DB_DRIVER_MAP.items():
+        if full_url.startswith(url_prefix):
+            db_type = dtype
+            break
+
+    if db_type is None:
+        print("ERROR: Unknown database type in URL: " + full_url)
+        print("Supported types: postgresql, highgo")
+        sys.exit(1)
+
+    # Parse URL: jdbc:postgresql://host:port/database?params
+    url_prefix = DB_DRIVER_MAP[db_type][1]
+    pattern = re.escape(url_prefix) + r'([^/:]+):(\d+)/([^?]+)\??(.*)'
+    match = re.match(pattern, full_url)
+    if not match:
+        return None
+
+    host = match.group(1)
+    port = int(match.group(2))
+    database = match.group(3)
+    params = match.group(4)
+
+    # Parse schema from currentSchema param
+    schema = None
+    for param in params.split('&'):
+        if param.startswith('currentSchema='):
+            schema = param.split('=')[1]
+            break
+
+    return {
+        "host": host,
+        "port": port,
+        "database": database,
+        "schema": schema,
+        "user": real["db_master_user"],
+        "password": real["db_master_password"],
+        "full_url": full_url,
+        "db_type": db_type
+    }
+
+
 def get_connection_config(secrets, source="master"):
     """Extract connection config from secrets for master or slave."""
+    if source == "master" and "db_master_url" in secrets["real_values"]:
+        # Use URL parsing for master to extract schema
+        url_config = get_secrets_url_config(secrets)
+        if url_config:
+            return url_config
+
+    # Fallback to individual keys
     real = secrets["real_values"]
     prefix = "db_master" if source == "master" else "db_slave"
 
@@ -122,6 +199,8 @@ def confirm_interactive(config):
     print("  Host:     " + config["host"])
     print("  Port:     " + str(config["port"]))
     print("  Database: " + config["database"])
+    if config.get("schema"):
+        print("  Schema:   " + config["schema"])
     print("  Username: " + config["user"])
     print("  Password: ****")
     print()
@@ -141,46 +220,163 @@ def show_config(secrets, source="master"):
     print("  Host:     " + config["host"])
     print("  Port:     " + str(config["port"]))
     print("  Database: " + config["database"])
+    if config.get("schema"):
+        print("  Schema:   " + config["schema"])
     print("  Username: " + config["user"])
     print("  Password: ****")
+    db_type = config.get("db_type", "postgresql")
+    driver_class = DB_DRIVER_MAP.get(db_type, DB_DRIVER_MAP["postgresql"])[0]
+    print("  Driver:   " + driver_class)
+
+
+# Fixed HighGo JDBC driver path
+HIGHGO_FIXED_JAR = "C:/Users/andyh/.m2/repository/com/highgo/hgdb-pgjdbc/42.5.0/hgdb-pgjdbc-42.5.0.jar"
+
+
+def get_jdbc_jars(db_type="postgresql"):
+    """Find JDBC jar files from local Maven repository based on database type."""
+    # Use fixed HighGo driver if available
+    if os.path.exists(HIGHGO_FIXED_JAR):
+        return [HIGHGO_FIXED_JAR]
+
+    m2_path = os.path.expanduser("~/.m2/repository")
+
+    patterns = DB_JAR_PATTERNS.get(db_type, DB_JAR_PATTERNS["postgresql"])
+    jars = []
+    for root, dirs, files in os.walk(m2_path):
+        for f in files:
+            for pattern in patterns:
+                if f.startswith(pattern) and f.endswith(".jar"):
+                    jars.append(os.path.join(root, f))
+                    break
+
+    return jars
+
+
+def build_jdbc_url(config):
+    """Build JDBC URL from connection config based on database type."""
+    host = config["host"]
+    port = config["port"]
+    database = config["database"]
+    schema = config.get("schema")
+    db_type = config.get("db_type", "postgresql")
+
+    # Use full URL if available (preserves all params including currentSchema)
+    if "full_url" in config:
+        return config["full_url"]
+
+    url_prefix = DB_DRIVER_MAP.get(db_type, DB_DRIVER_MAP["postgresql"])[1]
+    url = f"{url_prefix}{host}:{port}/{database}?useUnicode=true&characterEncoding=UTF-8"
+    if schema:
+        url += f"&currentSchema={schema}"
+    return url
+
+
+def add_schema_prefix(query, schema):
+    """Add schema prefix to table names in FROM/JOIN clauses if not already specified.
+
+    This ensures queries operate on the correct schema's tables.
+    - Already schema-qualified tables (e.g., 'pg_catalog.pg_class') are left unchanged
+    - pg_ system tables get pg_catalog prefix (e.g., pg_class -> pg_catalog.pg_class)
+    - information_schema stays unchanged (SQL standard, not schema-specific)
+    - Other tables get the configured schema prefix
+    - String literals and subqueries are preserved
+    """
+    if not schema:
+        return query
+
+    def replace_table(match):
+        prefix = match.group(1)  # FROM, JOIN, INTO, etc.
+        after = match.group(2)   # whitespace after keyword
+        table = match.group(3)   # full table name (potentially with schema prefix)
+
+        table_lower = table.lower()
+
+        # Already schema-qualified (e.g., 'pg_catalog.pg_class' or 'test.hld_area')
+        if '.' in table:
+            return match.group(0)
+
+        # pg_ system tables use pg_catalog schema
+        if table_lower.startswith('pg_'):
+            return f"{prefix}{after}pg_catalog.{table}"
+
+        # information_schema is SQL standard, not schema-specific
+        if table_lower == 'information_schema':
+            return match.group(0)
+
+        # Add configured schema prefix for user tables
+        return f"{prefix}{after}{schema}.{table}"
+
+    # Match FROM/JOIN/INTO keywords followed by table name
+    # Table name can include schema prefix (e.g., pg_catalog.pg_class)
+    pattern = r'\b(FROM|JOIN|INTO)(\s+)([\w."]+)'
+
+    return re.sub(pattern, replace_table, query, flags=re.IGNORECASE)
 
 
 def execute_query(config, query, limit=100, timeout=30):
     """Execute the validated read-only query and return results."""
+    # Add schema prefix to table names if schema is configured
+    schema = config.get("schema")
+    query = add_schema_prefix(query, schema)
+
     limit_clause = ""
     if not re.search(r'\bLIMIT\b', query, re.IGNORECASE):
         limit_clause = " LIMIT " + str(limit)
 
     full_query = query + limit_clause
 
+    jdbc_url = build_jdbc_url(config)
+
+    # Set JAVA_HOME for JayDeBeApi to use Java 17
+    os.environ["JAVA_HOME"] = JAVA17_HOME
+    os.environ["PATH"] = os.path.join(JAVA17_HOME, "bin") + os.pathsep + os.environ.get("PATH", "")
+    # Set JVM encoding for Chinese character support
+    os.environ["JAVA_TOOL_OPTIONS"] = "-Dfile.encoding=UTF-8"
+
+    db_type = config.get("db_type", "postgresql")
+
+    jars = get_jdbc_jars(db_type)
+    if not jars:
+        print(f"ERROR: {db_type} JDBC driver not found.")
+        print(f"Expected patterns: {DB_JAR_PATTERNS.get(db_type)}")
+        print("Please ensure the driver is installed.")
+        sys.exit(1)
+
+    jdbc_driver = jars[0]
+    print(f"Using JDBC driver: {jdbc_driver}", file=sys.stderr)
+
+    # Use fixed HighGo driver (still uses org.postgresql.Driver class)
+    if jdbc_driver == HIGHGO_FIXED_JAR:
+        driver_class = "org.postgresql.Driver"
+    else:
+        driver_class = DB_DRIVER_MAP.get(db_type, DB_DRIVER_MAP["postgresql"])[0]
+
     try:
-        connection = psycopg2.connect(
-            host=config["host"],
-            port=config["port"],
-            user=config["user"],
-            password=config["password"],
-            dbname=config["database"],
-            connect_timeout=timeout,
+        conn = jaydebeapi.connect(
+            driver_class,
+            jdbc_url,
+            [config["user"], config["password"]],
+            jdbc_driver,
         )
-    except psycopg2.OperationalError as e:
+    except Exception as e:
         print("ERROR: Connection failed: " + str(e))
         print("  Host: " + config["host"] + ", Port: " + str(config["port"]))
         print("  Database: " + config["database"] + ", User: " + config["user"])
         sys.exit(1)
 
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(full_query)
-            rows = cursor.fetchall()
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-    except psycopg2.OperationalError as e:
+        cursor = conn.cursor()
+        cursor.execute(full_query)
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        cursor.close()
+    except Exception as e:
+        conn.close()
         print("ERROR: Query execution failed: " + str(e))
         sys.exit(1)
-    except psycopg2.ProgrammingError as e:
-        print("ERROR: Query syntax error: " + str(e))
-        sys.exit(1)
     finally:
-        connection.close()
+        conn.close()
 
     return columns, rows
 
@@ -244,7 +440,7 @@ def format_as_table(columns, rows):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Read-only PostgreSQL query tool. Only SELECT allowed."
+        description="Read-only HighGo/PostgreSQL query tool via JDBC. Only SELECT allowed."
     )
     parser.add_argument("--query", required=False, help="SQL query to execute")
     parser.add_argument("--source", choices=["master", "slave"], default="master",
