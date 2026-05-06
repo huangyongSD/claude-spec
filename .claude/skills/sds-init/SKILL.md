@@ -28,7 +28,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
 ## 工作流程
 
 ```
-第一步：扫描项目信息（含登录接口与鉴权检测）→ 第二步：E2E 框架自动配置 → 第三步：展示扫描结果供用户确认 → 第四步：Edit 替换 16 个配置文件（含 secrets.json）→ 第五步：审批通用配置文件 → 第六步：评审验证 → 第七步：最终报告
+第一步：扫描项目信息（含登录接口与鉴权检测）→ 第二步：E2E 框架自动配置 → 第三步：展示扫描结果供用户确认 → 第四步：Edit 替换 15 个配置文件 + 新建 auth.md（共 16 处变更）→ 第五步：审批通用配置文件 → 第六步：评审验证 → 第七步：最终报告
 ```
 
 ---
@@ -168,7 +168,7 @@ description: 项目初始化——扫描项目源码信息并自动填充 .claud
   - 密码（必填）
   - 角色说明（可选，如"超级管理员"、"普通用户"）
 
-> **强制要求**：测试账号必须配置，否则后续测试无法执行。如果用户拒绝输入，在报告中标注"未配置测试账号，测试功能将受限"。
+> **强制要求**：测试账号是测试功能的必要条件。未检测到时必须要求用户输入；用户拒绝输入时在报告中标注"未配置测试账号，测试功能将受限"。
 
 #### 1.8.6 生成认证配置摘要
 
@@ -201,7 +201,7 @@ AI 合成以下信息：
 
 ## 第二步：E2E 框架自动配置（强制）
 
-> **强制要求**：所有项目必须配置 E2E 测试框架，不允许跳过或降级。
+> **强制要求**：除纯后端项目和移动端项目外，所有项目必须配置 E2E 测试框架，不允许跳过或降级。
 
 ### 2.1 检测当前 E2E 状态
 
@@ -349,7 +349,7 @@ npx playwright test --version
 
 ---
 
-## 第四步：Edit 替换 16 个配置文件（含 secrets.json）
+## 第四步：Edit 替换 15 个配置文件 + 新建 auth.md（共 16 处变更）
 
 > **强制要求**：secrets.json 必须与项目数据库、中间件配置保持一致，这是 sds-dbquery 等工具正常运行的前提。
 
@@ -362,11 +362,10 @@ npx playwright test --version
 > **此文件关系到 db-query.py 等工具能否正常运行，必须与项目配置一致。**
 
 替换字段（从 application*.yml 扫描获取）：
-- `db_master_url` → 从 `spring.datasource.druid.master.url` 提取完整 JDBC URL（必须保留 `currentSchema`、`characterEncoding` 等参数）
+- `db_master_url` → 从 `spring.datasource.druid.master.url` 提取完整 JDBC URL（必须保留 `currentSchema`、`characterEncoding` 等参数，db-query.py 会自动解析）
 - `db_master_host` → 从 JDBC URL 解析 host
 - `db_master_port` → 从 JDBC URL 解析 port
 - `db_master_name` → 从 JDBC URL 解析 dbname（如 `digital_housing`）
-- `db_master_schema` → 从 JDBC URL 的 `currentSchema=` 参数提取（如未指定则为 public）
 - `db_master_user` → 从 `spring.datasource.druid.master.username` 提取
 - `db_master_password` → 从 `spring.datasource.druid.master.password` 提取
 - `db_slave_*` → 从 `spring.datasource.druid.slave` 提取（如未启用则留空）
@@ -449,7 +448,9 @@ npx playwright test --version
 #### 9. .claude/agents/sda-backend.md
 
 替换段落：
-- VO 命名模式 → 实际 VO 后缀（如 SaveReqVO/PageReqVO/RespVO）
+- Domain/VO 模式 → 根据项目实际选择：
+  - 若依项目（RuoYi）：使用 Domain 类（如 XxxDomain），无需独立 VO
+  - 其他项目：使用 VO 类（如 SaveReqVO/PageReqVO/RespVO）
 - Service 模式 → 实际命名和注解
 - Controller 模式 → 实际注解集和 @Tag 前缀
 - 权限后缀 → 实际权限命名（如 xxx:create/update/delete/query/export）
@@ -559,7 +560,8 @@ npx playwright test --version
 | 用户名 | 密码 | 角色 | 说明 |
 |--------|------|------|------|
 | {用户输入的用户名} | {用户输入的密码} | {用户输入的角色} | {用户输入的说明} |
-| {如未配置} | - | - | 未配置测试账号，测试功能将受限 |
+
+> 如未配置测试账号：标注"未配置测试账号，测试功能将受限"
 
 > **安全提醒**：测试账号信息存储在本地配置文件中，不会提交到 Git。请勿使用生产环境账号密码。
 
@@ -637,6 +639,7 @@ npx playwright test --version
   - 如 db-query.py 使用 psycopg2，则 `db_master_url` 必须为 PostgreSQL 兼容格式
   - 如 db-query.py 使用 pymysql，则 `db_master_url` 必须为 MySQL 格式
   - 如不匹配，Edit 修正 secrets.json 并更新 db-query.py 的连接参数
+- **验证中间件配置完整性**：检查 secrets.json 中的 redis/rabbit 字段是否与 application*.yml 一致，如不一致则修正
 
 发现不符合 → Edit 修正。
 
@@ -656,27 +659,14 @@ npx playwright test --version
    - 提取其他关键参数（如 `useUnicode`、`allowMultiQueries`）
 
 2. **询问用户提供本地数据库驱动 jar 路径**
-   
+
    > **重要**：不同项目的数据库驱动可能不同（如 HighGo/PostgreSQL/MySQL 等），必须询问用户提供本地的 JDBC driver jar 路径。
 
    使用 AskUserQuestion 询问：
    - 数据库驱动 jar 路径（如 `C:/Users/xxx/.m2/repository/com/highgo/hgdb-pgjdbc/42.5.0/hgdb-pgjdbc-42.5.0.jar`）
    - 验证路径是否存在
 
-3. **检查 settings.json 中的 JAVA17_HOME 路径**
-   
-   > **重要**：db-query.py 依赖 JAVA_HOME 环境变量执行 JDBC 连接。如果 settings.json 中配置的 JAVA17_HOME 路径不存在，会导致连接失败。
-
-   - 读取 settings.json 检查 JAVA17_HOME 配置
-   - 如配置了路径但本地不存在，使用 AskUserQuestion 要求用户输入新的 ASCII 路径
-   - 路径要求：不包含中文、特殊字符（仅允许字母、数字、冒号、反斜杠、点号、下划线、连字符、空格）
-   - 推荐路径：`C:/tools/java/jdk-17.0.12` 或 `C:/Program Files/Java/jdk-17`
-
-   验证路径存在性：
-   ```bash
-   # 检查路径是否存在
-   ls "<用户提供的路径>" 2>/dev/null || echo "路径不存在"
-   ```
+3. **回退处理**：如项目无 `package.json`（纯后端项目），跳过步骤 2（询问用户提供 JDBC driver jar 路径），直接使用 Maven 本地仓库搜索 JDBC driver
 
 4. **修改 db-query.py 支持 schema 和编码参数**
 
@@ -706,14 +696,14 @@ npx playwright test --version
                break
 
        return {
-           "db_type": db_type,
            "host": host,
            "port": port,
            "database": database,
            "schema": schema,
            "user": real["db_master_user"],
            "password": real["db_master_password"],
-           "full_url": full_url  # 保留完整 URL
+           "full_url": full_url,
+           "db_type": db_type
        }
    ```
 
@@ -794,14 +784,11 @@ npx playwright test --version
    - 检查项目根目录路径是否包含非 ASCII 字符（如中文、日文、特殊符号）
    - Windows 可用 `echo $PWD | grep -P '[^\x00-\x7F]'` 检测
 
-2. **检查 settings.json 中配置的路径是否存在**
-
-   > **重要**：settings.json 中可能配置了 JAVA17_HOME 等路径，必须检查这些路径在本地是否存在。
-
-   - 读取 settings.json 检查配置的路径（如 JAVA17_HOME）
-   - 如配置了路径但本地不存在，使用 AskUserQuestion 要求用户输入新的 ASCII 路径
-   - **路径要求**：不包含中文、特殊字符（仅允许字母、数字、冒号、反斜杠、点号、下划线、连金属，空格）
-   - 验证路径存在性：`ls "<用户提供的路径>"` 或 `test -d "<路径>"`
+2. **检查 hooks 脚本路径是否含中文或特殊字符**
+   - 读取 settings.json 检查 hooks 的 `command` 路径
+   - 如 hooks 脚本路径含中文/特殊字符，使用 AskUserQuestion 要求用户输入 ASCII 新路径
+   - **路径要求**：绝对路径不包含中文、特殊字符（仅允许字母、数字、冒号、反斜杠、点号、下划线、连字符，空格）
+   - 验证路径存在性：`ls "<用户输入的绝对路径>"` 或 `test -d "<绝对路径>"`
 
    **如项目路径含中文且需要迁移 hooks 脚本，执行以下步骤**
 
@@ -863,7 +850,7 @@ npx playwright test --version
 
 ### 6.1 逐文件 Read 检查
 
-Read 所有 15 个被修改的文件，逐文件验证替换内容。
+Read 所有 16 个被修改的文件，逐文件验证替换内容。
 
 ### 6.2 交叉验证
 
@@ -872,7 +859,8 @@ Read 所有 15 个被修改的文件，逐文件验证替换内容。
 - **secrets.json 数据库配置 ↔ application*.yml 中的实际配置一致？**
 - 中间件描述 ↔ pom.xml 依赖 + YAML 配置一致？
 - 目录结构 ↔ 实际文件系统一致？
-- 命令 ↔ package.json scripts 一致？
+- **命令（1.5） ↔ package.json scripts + pom.xml 实际命令一致？**
+- **文件扩展名（1.6） ↔ 实际项目文件扩展名一致？**
 - SDA 代码模式 ↔ 实际代码采样一致？
 - **登录接口配置 ↔ 实际 Controller 代码一致？**
 - **鉴权方式配置 ↔ 实际鉴权框架配置一致？**
@@ -885,13 +873,14 @@ Read 所有 15 个被修改的文件，逐文件验证替换内容。
 - sda-frontend 的组件模式 ↔ 实际 Vue 代码一致？
 - sda-tester 的 stubs ↔ 实际组件一致？
 - security.md 的 ORM 检查 ↔ 项目实际 ORM 一致？
-- **db-query.py 的 JDBC driver ↔ secrets.json 的数据库类型一致？**
+- **db-query.py 的 JDBC driver 与 secrets.json 数据库类型一致性验证（验证第五步 5.1 修改是否正确）**
   - com.mysql.cj.jdbc.Driver → MySQL
   - org.postgresql.Driver → PostgreSQL
   - com.highgo.jdbc.Driver → HighGo
   - com.kingbase.Driver → Kingbase
   - dm.jdbc.driver.DmDriver → DM（达梦）
   - 不一致则标记为 P0 问题，必须修复
+- **中间件配置完整性验证**：secrets.json 中的 redis/rabbit 字段 ↔ application*.yml 配置是否完整匹配
 
 ### 6.4 修正
 
@@ -936,28 +925,28 @@ E2E 测试框架：
   ℹ️ 纯后端项目 — 跳过 E2E 配置
   ℹ️ 移动端项目 — E2E 降级为人工验收
 
-修改文件（16 个）：
-  ✅ secrets.json — 数据库/中间件连接配置（强制）
-  ✅ CLAUDE.md — 项目信息区/命令/目录/红线
-  ✅ structure.md — 目录树/导航/ADR
-  ✅ dbinfo.md — charset/方言/DB类型
-  ✅ testing.md — 命令/E2E
-  ✅ frontend.md — 技术栈
-  ✅ security.md — ORM/权限
-  ✅ governance.md — 构建命令/端口
-  ✅ sda-db-implementer.md — SQL规范/字段/DO/Mapper
-  ✅ sda-backend.md — VO/Service/Controller/权限/登录接口/鉴权方式
-  ✅ sda-frontend.md — 技术栈/组件/API
-  ✅ sda-tester.md — 注解/stubs/命令/E2E/登录认证/测试账号
-  ✅ sda-architect.md — 权限/菜单表
-  ✅ sda-code-reviewer.md — ORM检查/权限
-  ✅ sda-build-error-resolver.md — 框架/命令
-  ✅ auth.md — 登录接口/鉴权方式/测试账号/认证流程
+配置文件变更（共 16 处）：
+  ✅ secrets.json — 数据库/中间件连接配置（替换）
+  ✅ CLAUDE.md — 项目信息区/命令/目录/红线（替换）
+  ✅ structure.md — 目录树/导航/ADR（替换）
+  ✅ dbinfo.md — charset/方言/DB类型（替换）
+  ✅ testing.md — 命令/E2E（替换）
+  ✅ frontend.md — 技术栈（替换）
+  ✅ security.md — ORM/权限（替换）
+  ✅ governance.md — 构建命令/端口（替换）
+  ✅ sda-db-implementer.md — SQL规范/字段/DO/Mapper（替换）
+  ✅ sda-backend.md — VO/Service/Controller/权限/登录接口/鉴权方式（替换）
+  ✅ sda-frontend.md — 技术栈/组件/API（替换）
+  ✅ sda-tester.md — 注解/stubs/命令/E2E/登录认证/测试账号（替换）
+  ✅ sda-architect.md — 权限/菜单表（替换）
+  ✅ sda-code-reviewer.md — ORM检查/权限（替换）
+  ✅ sda-build-error-resolver.md — 框架/命令（替换）
+  ✅ auth.md — 登录接口/鉴权方式/测试账号/认证流程（新建）
 
-已审批通用配置文件（4 类）：
+已审批通用配置文件：
   ✅ settings.json — allow 列表
-  ✅ *.ps1 hooks — 路径/命令适配（Windows 中文路径已迁移至 ASCII 目录）
-  ✅ *.py tools — 路径/框架适配
+  ✅ hooks/*.ps1 — 路径/命令适配（Windows 中文路径已迁移至 ASCII 目录）
+  ✅ tools/*.py — 路径/框架适配
   ✅ secrets.json — 数据库/中间件配置一致性
 
 评审验证：

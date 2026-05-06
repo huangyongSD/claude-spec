@@ -4,7 +4,7 @@
 
 $stdin = ""
 try {
-    $stdin = [Console]::In.ReadToEnd()
+    $stdin = [System.Console]::In.ReadToEnd()
 } catch {
     exit 0
 }

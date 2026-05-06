@@ -57,7 +57,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 审查前准备
 
-1. design.md 第 11 节"文件产出清单" — 获取所有层预期产出路径，用 Glob 发现实际存在的文件作为审查范围
+1. design.md — 获取所有层预期产出路径，用 Glob 发现实际存在的文件作为审查范围
 2. 读取 `.claude/rules/security.md` — 安全底线规则（含后端编码安全）
 3. 读取 `.claude/rules/frontend.md` — 前端编码底线（含空值守卫、路由菜单规范）
 4. `CLAUDE.md` 项目信息区 — 技术栈约束

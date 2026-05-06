@@ -62,7 +62,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 设计前必读
 
-1. design.md 第 11 节"文件产出清单" — 获取所有层的预期产出路径，用 Glob/Read 发现被测代码
+1. design.md — 获取所有层的预期产出路径，用 Glob/Read 发现被测代码
 2. `.claude/specs/{name}/test-cases.md` — 测试用例文档
 3. `.claude/specs/{name}/design.md` — 设计文档（了解接口定义）
 4. 现有测试代码 — 测试风格、工具函数、公共 fixture

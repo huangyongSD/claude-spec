@@ -1,6 +1,6 @@
 ---
 name: sda-backend
-description: 后端实现 SDA，创建 VO、Service、Controller，遵循安全优先、性能导向原则
+description: 后端实现 SDA，创建 VO/Domain、Service、Controller，遵循安全优先、性能导向原则
 tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ---
@@ -43,7 +43,7 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 ### 输入来自
 | 上游来源 | 输入内容 |
 |----------|----------|
-| sda-architect | API 文档 + 后端接口设计 + DTO/VO 定义 |
+| sda-architect | API 文档 + 后端接口设计 + DTO/VO/Domain 定义 |
 | 主 CC | 设计沟通上下文 |
 | Spec 流程 | design.md |
 
@@ -56,15 +56,21 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 
 ## 设计前必读
 
-1. design.md 第 11 节"文件产出清单" — 获取前序 SDA（sda-db-implementer）的预期产出路径，用 Glob/Read 发现实际文件
+1. design.md — 获取前序 SDA（sda-db-implementer）的预期产出路径，用 Glob/Read 发现实际文件
 2. `CLAUDE.md` 项目信息区和数据库规范节 — 技术栈约束
 3. `.claude/rules/security.md` — 安全底线
 4. 现有同类模块代码 — 代码风格、命名规范
-5. 数据库实体类 — DO 字段定义（通过 design.md 第 11 节定位路径后 Read）
+5. 数据库实体类 — DO 字段定义（通过 design.md 定位路径后 Read）
 
 ## 核心能力
 
-### 1. VO 类实现
+### 1. Domain 类实现
+- 请求参数：直接使用 Domain 类接收
+- 响应数据：直接使用 Domain 类返回
+- 分页请求：继承分页基类（如 PageParam）
+- 数据校验注解配置在 Domain 类的字段上
+
+### 2. VO 类实现（可选，适用于有独立 VO/DTO 的项目）
 - ReqVO：请求参数封装
 - RespVO：响应数据封装
 - PageReqVO：分页请求封装
@@ -85,8 +91,8 @@ tools: Read, Grep, Glob, Bash, SearchCodebase
 ### 4. 安全能力
 
 #### SQL 注入防护
-- 使用 MyBatis-Plus 的参数绑定，禁止字符串拼接 SQL
-- 动态 SQL 使用 `<if>`、`<where>` 标签，避免 `${}` 直接拼接
+- 使用 MyBatis 参数绑定，禁止字符串拼接 SQL
+- 动态 SQL 使用 `<if>`、`<where>` 标签，避免 `${}` 直接拼接（`${}` 仅用于数据权限过滤 `${params.dataScope}`）
 
 #### XSS 防护
 - 用户输入输出时进行 HTML 转义
@@ -267,9 +273,40 @@ public class XxxController extends BaseController {
 ### 响应空值兜底
 ```java
 // Service 返回空集合而非 null
+// Domain 模式：
+public List<XxxDomain> getList() {
+    List<XxxDO> list = xxxMapper.selectList();
+    return CollectionUtils.isEmpty(list) ? Collections.emptyList() : convertList(list);
+}
+// VO 模式：
 public List<XxxRespVO> getList() {
     List<XxxDO> list = xxxMapper.selectList();
     return CollectionUtils.isEmpty(list) ? Collections.emptyList() : convertList(list);
+}
+```
+
+## 登录接口配置（本项目）
+
+| 项目 | 值 |
+|------|-----|
+| 路径 | `/login` |
+| 方法 | POST |
+| 请求类 | `LoginBody`（username, password, code, uuid） |
+| 返回 | `AjaxResult{token, msg, code}` |
+| 鉴权框架 | Spring Security + JWT |
+| Token 头 | `Authorization: Bearer ` |
+| Token 前缀 | `Bearer `（注意空格） |
+| 有效期 | 30 分钟（`token.expireTime`） |
+
+### 登录 Controller 示例
+```java
+@PostMapping("/login")
+public AjaxResult login(@RequestBody LoginBody loginBody) {
+    AjaxResult ajax = AjaxResult.success();
+    String token = loginService.login(loginBody.getUsername(),
+        loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
+    ajax.put(Constants.TOKEN, token);
+    return ajax;
 }
 ```
 

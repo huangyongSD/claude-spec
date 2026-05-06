@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/pre-bash-check.ps1"
+            "command": "powershell -ExecutionPolicy Bypass -File /d/code/website/.claude/hooks/pre-bash-check.ps1"
           }
         ]
       }
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-sensitive-read.ps1"
+            "command": "powershell -ExecutionPolicy Bypass -File /d/code/website/.claude/hooks/post-sensitive-read.ps1"
           }
         ]
       },
@@ -42,11 +42,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-sensitive-scan.ps1"
+            "command": "powershell -ExecutionPolicy Bypass -File /d/code/website/.claude/hooks/post-sensitive-scan.ps1"
           },
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/post-edit-check.ps1"
+            "command": "powershell -ExecutionPolicy Bypass -File /d/code/website/.claude/hooks/post-edit-check.ps1"
           }
         ]
       }
